@@ -12,7 +12,59 @@ UIController.InitializeUI()
 CameraController.Initialize()
 MovementController.Initialize()
 
--- 2. Atajos de teclado y clic de ataque
+-- 2. Animación de golpe en cliente (combo de 3 tajos: derecha, izquierda, estocada)
+local TweenService = game:GetService("TweenService")
+local COMBO_ANGLES = {
+    CFrame.Angles(math.rad(110), math.rad(-35), 0),
+    CFrame.Angles(math.rad(80), math.rad(40), math.rad(-20)),
+    CFrame.Angles(math.rad(95), 0, 0),
+}
+local comboIndex = 0
+local lastSwing = 0
+local swinging = false
+
+local function PlaySwing()
+    local now = os.clock()
+    if swinging or now - lastSwing < 0.28 then return false end
+    comboIndex = (now - lastSwing > 0.9) and 1 or (comboIndex % 3) + 1
+    lastSwing = now
+
+    local char = game.Players.LocalPlayer.Character
+    if not char then return true end
+    local joint: Motor6D? = nil
+    local upperArm = char:FindFirstChild("RightUpperArm")
+    if upperArm then
+        joint = upperArm:FindFirstChild("RightShoulder") :: Motor6D?
+    else
+        local torso = char:FindFirstChild("Torso")
+        joint = torso and torso:FindFirstChild("Right Shoulder") :: Motor6D?
+    end
+
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://9114223171"
+    sound.Volume = 0.7
+    sound.PlaybackSpeed = 1 + comboIndex * 0.08
+    sound.Parent = char:FindFirstChild("HumanoidRootPart") or char
+    sound:Play()
+    game:GetService("Debris"):AddItem(sound, 2)
+
+    if joint then
+        swinging = true
+        local orig = joint.C0
+        TweenService:Create(joint, TweenInfo.new(0.07, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            C0 = orig * COMBO_ANGLES[comboIndex],
+        }):Play()
+        task.delay(0.12, function()
+            local t = TweenService:Create(joint, TweenInfo.new(0.12, Enum.EasingStyle.Quad), { C0 = orig })
+            t:Play()
+            t.Completed:Wait()
+            swinging = false
+        end)
+    end
+    return true
+end
+
+-- 3. Atajos de teclado y clic de ataque
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F then
@@ -43,7 +95,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         -- Enviar orden de ataque sin trabas
         local remotes = ReplicatedStorage:FindFirstChild("Remotes")
         local reqAttack = remotes and remotes:FindFirstChild("RequestAttack") :: RemoteEvent?
-        if reqAttack then
+        if reqAttack and PlaySwing() then
             reqAttack:FireServer()
         end
     end

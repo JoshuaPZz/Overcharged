@@ -299,65 +299,8 @@ local function BuildProceduralWeapon(weaponDef: Types.WeaponDefinition, auraDef:
     particles.Size = NumberSequence.new(0.45, 0)
     particles.Parent = att
 
-    -- Script de cliente interactivo para animación inmediata y sonido de tajo
-    local localScript = Instance.new("LocalScript")
-    localScript.Name = "WeaponClient"
-    localScript.Source = [[
-        local tool = script.Parent :: Tool
-        local TweenService = game:GetService("TweenService")
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local player = game:GetService("Players").LocalPlayer
-
-        local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
-        local RequestAttack = remotes and remotes:WaitForChild("RequestAttack", 10) :: RemoteEvent?
-
-        local slashSound = Instance.new("Sound")
-        slashSound.Name = "SlashSound"
-        slashSound.SoundId = "rbxassetid://9114223171"
-        slashSound.Volume = 0.75
-        slashSound.Pitch = 1.15
-        slashSound.Parent = tool
-
-        local canSwing = true
-
-        tool.Activated:Connect(function()
-            if not canSwing then return end
-            canSwing = false
-
-            slashSound:Play()
-
-            -- Animación de movimiento del brazo derecho al blandir
-            local char = player.Character
-            if char then
-                local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
-                local torso = char:FindFirstChild("Torso") or char:FindFirstChild("RightUpperArm")
-                if rightArm and torso then
-                    local joint = rightArm:FindFirstChildOfClass("Motor6D") or torso:FindFirstChildOfClass("Motor6D")
-                    if joint then
-                        local origC0 = joint.C0
-                        TweenService:Create(joint, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                            C0 = origC0 * CFrame.Angles(math.rad(65), math.rad(-25), 0)
-                        }):Play()
-
-                        task.delay(0.12, function()
-                            TweenService:Create(joint, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-                                C0 = origC0
-                            }):Play()
-                        end)
-                    end
-                end
-            end
-
-            if RequestAttack then
-                RequestAttack:FireServer()
-            end
-
-            task.wait(0.25)
-            canSwing = true
-        end)
-    ]]
-    localScript.Parent = tool
-
+    -- La animación y el sonido del golpe se manejan en el cliente (ClientInit),
+    -- porque LocalScript.Source no se puede escribir en tiempo de ejecución.
     return tool
 end
 
