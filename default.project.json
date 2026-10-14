@@ -1,0 +1,50 @@
+{
+  "name": "Overcharged",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "OverchargedShared": {
+        "$path": "src/shared"
+      },
+      "Remotes": {
+        "$className": "Folder",
+        "RequestClick": {
+          "$className": "RemoteEvent"
+        },
+        "RequestUpgrade": {
+          "$className": "RemoteEvent"
+        },
+        "StateReplicated": {
+          "$className": "RemoteEvent"
+        },
+        "NotificationEvent": {
+          "$className": "RemoteEvent"
+        },
+        "RequestHouseUpgrade": {
+          "$className": "RemoteEvent"
+        },
+        "RequestBuyAutomator": {
+          "$className": "RemoteEvent"
+        },
+        "RequestAttack": {
+          "$className": "RemoteEvent"
+        },
+        "RequestPlaceBridgeBlock": {
+          "$className": "RemoteEvent"
+        }
+      }
+    },
+    "ServerScriptService": {
+      "OverchargedServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "OverchargedClient": {
+          "$path": "src/client"
+        }
+      }
+    }
+  }
+}
