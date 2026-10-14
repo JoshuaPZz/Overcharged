@@ -14,12 +14,21 @@ local CameraController = require(script.Parent.CameraController)
 
 local MovementController = {}
 
-local IsSprinting = false
-local BaseWalkSpeed = 16
-local SprintWalkSpeed = 26
+-- [HIPÓTESIS DE AJUSTE] Calibración de movilidad y físicas Skywars
+local CONFIG = {
+    BASE_WALK_SPEED = 16, -- [HIPÓTESIS DE AJUSTE] Velocidad de caminata base
+    SPRINT_SPEED_BOOST = 10, -- [HIPÓTESIS DE AJUSTE] Incremento de velocidad en sprint
+    DASH_COOLDOWN = 1.4, -- [HIPÓTESIS DE AJUSTE] Tiempo de recarga del Dash en segundos
+    DASH_FORCE_HORIZONTAL = 68, -- [HIPÓTESIS DE AJUSTE] Impulso horizontal de evasión
+    DASH_FORCE_VERTICAL = 14, -- [HIPÓTESIS DE AJUSTE] Arco parabólico de elevación del Dash
+    DOUBLE_JUMP_VERTICAL_SPEED = 52, -- [HIPÓTESIS DE AJUSTE] Velocidad vertical del segundo salto
+    SPRINT_FOV = 84, -- [HIPÓTESIS DE AJUSTE] Campo de visión dinámico al esprintar
+    DASH_FOV = 88, -- [HIPÓTESIS DE AJUSTE] Campo de visión momentáneo al hacer Dash
+    NORMAL_FOV = 70, -- [HIPÓTESIS DE AJUSTE] Campo de visión estándar de combate
+}
 
+local IsSprinting = false
 local LastDashTime = 0
-local DashCooldown = 1.4
 local CanDoubleJump = false
 local HasDoubleJumped = false
 
@@ -112,19 +121,20 @@ function MovementController.PerformDash()
     local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not root or not hum or hum.Health <= 0 then return end
+    if hum:GetState() == Enum.HumanoidStateType.Dead or hum.PlatformStand then return end
 
     local now = os.clock()
-    if (now - LastDashTime) < DashCooldown then return end
+    if (now - LastDashTime) < CONFIG.DASH_COOLDOWN then return end
     LastDashTime = now
 
     -- Animar barra de recarga en pantalla
     if DashFill and DashGlow then
         DashFill.Size = UDim2.fromScale(0, 1)
         DashGlow.Color = Color3.fromRGB(80, 90, 110)
-        TweenService:Create(DashFill, TweenInfo.new(DashCooldown, Enum.EasingStyle.Linear), {
+        TweenService:Create(DashFill, TweenInfo.new(CONFIG.DASH_COOLDOWN, Enum.EasingStyle.Linear), {
             Size = UDim2.fromScale(1, 1)
         }):Play()
-        task.delay(DashCooldown, function()
+        task.delay(CONFIG.DASH_COOLDOWN, function()
             if DashGlow then
                 DashGlow.Color = Color3.fromRGB(0, 230, 255)
                 TweenService:Create(DashGlow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -148,19 +158,19 @@ function MovementController.PerformDash()
     end
 
     -- Impulso físico parabólico mediante AssemblyLinearVelocity
-    root.AssemblyLinearVelocity = (moveDir.Unit * 68) + Vector3.new(0, 14, 0)
+    root.AssemblyLinearVelocity = (moveDir.Unit * CONFIG.DASH_FORCE_HORIZONTAL) + Vector3.new(0, CONFIG.DASH_FORCE_VERTICAL, 0)
 
     -- Efectos visuales, sacudida y sonido
     SpawnDashTrail(root)
     SoundUtil.Play2D(SoundUtil.SOUNDS.DASH, 0.75, true)
     CameraController.Shake(0.75, 0.22, 28)
-    CameraController.SetTargetFOV(88, 0.15)
+    CameraController.SetTargetFOV(CONFIG.DASH_FOV, 0.15)
 
     task.delay(0.25, function()
         if IsSprinting then
-            CameraController.SetTargetFOV(82, 0.25)
+            CameraController.SetTargetFOV(CONFIG.SPRINT_FOV, 0.25)
         else
-            CameraController.SetTargetFOV(70, 0.25)
+            CameraController.SetTargetFOV(CONFIG.NORMAL_FOV, 0.25)
         end
     end)
 end
@@ -170,19 +180,19 @@ function MovementController.SetSprinting(active: boolean)
     IsSprinting = active
     local char = localPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
+    if hum and hum.Health > 0 and hum:GetState() ~= Enum.HumanoidStateType.Dead then
         local currentBase = hum:GetAttribute("BaseWalkSpeed")
         if typeof(currentBase) ~= "number" then
             hum:SetAttribute("BaseWalkSpeed", hum.WalkSpeed)
             currentBase = hum.WalkSpeed
         end
-        hum.WalkSpeed = active and (currentBase + 10) or currentBase
+        hum.WalkSpeed = active and (currentBase + CONFIG.SPRINT_SPEED_BOOST) or currentBase
     end
 
     if active then
-        CameraController.SetTargetFOV(84, 0.25)
+        CameraController.SetTargetFOV(CONFIG.SPRINT_FOV, 0.25)
     else
-        CameraController.SetTargetFOV(70, 0.25)
+        CameraController.SetTargetFOV(CONFIG.NORMAL_FOV, 0.25)
     end
 end
 
@@ -245,7 +255,7 @@ function MovementController.Initialize()
             CanDoubleJump = false
 
             -- Impulso vertical del segundo salto
-            root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, 52, root.AssemblyLinearVelocity.Z)
+            root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, CONFIG.DOUBLE_JUMP_VERTICAL_SPEED, root.AssemblyLinearVelocity.Z)
 
             -- Anillo de choque y sonido en los pies
             local ring = Instance.new("Part")

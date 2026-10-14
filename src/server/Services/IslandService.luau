@@ -12,6 +12,13 @@ local MapService = require(script.Parent.MapService)
 
 local IslandService = {}
 
+-- [HIPÓTESIS DE AJUSTE] Configuración de islas, zonas seguras y protección de vacío
+local ISLAND_CONFIG = {
+    VOID_TELEPORT_HEIGHT = -60, -- [HIPÓTESIS DE AJUSTE] Cota inferior donde se detecta caída al vacío para reaparición segura
+    SAFEZONE_INVASION_PUSH = 120, -- [HIPÓTESIS DE AJUSTE] Fuerza de repulsión si un invasor pisa isla ajena
+    SAFEZONE_INVASION_LIFT = 40, -- [HIPÓTESIS DE AJUSTE] Elevación vertical de repulsión perimetral
+}
+
 -- Estado de ocupación de las 6 islas: [islandIndex] = Player?
 local IslandOccupants: { [number]: Player? } = {}
 
@@ -224,6 +231,13 @@ function IslandService.StartProtectionLoop()
                     local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
 
                     if humanoid and root then
+                        -- Reinicio y salvaguarda al caer al vacío (Skywars Void Catch)
+                        if root.Position.Y < ISLAND_CONFIG.VOID_TELEPORT_HEIGHT then
+                            root.AssemblyLinearVelocity = Vector3.zero
+                            humanoid.Health = humanoid.MaxHealth
+                            IslandService.TeleportToIsland(player)
+                        end
+
                         -- En zona segura no se puede morir
                         if IslandService.IsInSafezone(player) then
                             if humanoid.Health < humanoid.MaxHealth then
@@ -243,7 +257,7 @@ function IslandService.StartProtectionLoop()
                                         -- Si invade la isla de otro, empujarlo suavemente hacia afuera
                                         if dist < (GameConfig.PLAYER_ISLAND_RADIUS - 2) then
                                             local pushDir = (root.Position - floor.Position).Unit
-                                            root.AssemblyLinearVelocity = Vector3.new(pushDir.X * 120, 40, pushDir.Z * 120)
+                                            root.AssemblyLinearVelocity = Vector3.new(pushDir.X * ISLAND_CONFIG.SAFEZONE_INVASION_PUSH, ISLAND_CONFIG.SAFEZONE_INVASION_LIFT, pushDir.Z * ISLAND_CONFIG.SAFEZONE_INVASION_PUSH)
                                         end
                                     end
                                 end

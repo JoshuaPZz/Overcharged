@@ -21,6 +21,21 @@ local playerGui = localPlayer:WaitForChild("PlayerGui")
 
 local UIController = {}
 
+-- [HIPÓTESIS DE AJUSTE] Configuración de calibración de Interfaz y Micro-interacciones
+local UI_CONFIG = {
+    MODAL_TWEEN_DURATION = 0.25,      -- [HIPÓTESIS DE AJUSTE] Duración de apertura/cierre de modales (s)
+    TOP_HUD_TWEEN_DURATION = 0.28,    -- [HIPÓTESIS DE AJUSTE] Duración de colapso de TopHUD y Dock lateral (s)
+    HOVER_SCALE = 1.06,               -- [HIPÓTESIS DE AJUSTE] Factor de escala al pasar cursor sobre botones
+    CLICK_SCALE = 0.93,               -- [HIPÓTESIS DE AJUSTE] Factor de escala al presionar botones
+    LERP_SPEED = 12,                  -- [HIPÓTESIS DE AJUSTE] Velocidad de interpolación del contador de energía
+    ENERGY_PULSE_SCALE = 1.15,        -- [HIPÓTESIS DE AJUSTE] Factor de pulso de texto de energía al recibir recompensa
+}
+
+type UIState = "Expanded" | "Transitioning" | "Minimized"
+local ModalStates: { [Instance]: UIState } = {}
+local TopHUDState: UIState = "Expanded"
+local DockState: UIState = "Expanded"
+
 -- Referencias de elementos de la interfaz
 local ScreenGui: ScreenGui
 local EnergyLabel: TextLabel
@@ -92,7 +107,7 @@ local function AddModernGradient(parent: Instance, col1: Color3?, col2: Color3?)
     return grad
 end
 
--- Micro-interacciones táctiles en botones (Hover 1.06x + Sonido, Click 0.92x + Sonido)
+-- Micro-interacciones táctiles en botones (Hover 1.06x + Sonido, Click 0.93x + Sonido)
 local function ApplyButtonMicroInteractions(btn: GuiButton)
     if btn:FindFirstChild("HasMicroInteractions") then return end
     local tag = Instance.new("BoolValue")
@@ -109,7 +124,7 @@ local function ApplyButtonMicroInteractions(btn: GuiButton)
     btn.MouseEnter:Connect(function()
         SoundUtil.Play2D(SoundUtil.SOUNDS.HOVER, 0.4, true)
         TweenService:Create(uiScale, TweenInfo.new(0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Scale = 1.06,
+            Scale = UI_CONFIG.HOVER_SCALE,
         }):Play()
     end)
 
@@ -122,7 +137,7 @@ local function ApplyButtonMicroInteractions(btn: GuiButton)
     btn.MouseButton1Down:Connect(function()
         SoundUtil.Play2D(SoundUtil.SOUNDS.CLICK, 0.5, true)
         TweenService:Create(uiScale, TweenInfo.new(0.08, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Scale = 0.92,
+            Scale = UI_CONFIG.CLICK_SCALE,
         }):Play()
     end)
 
@@ -133,8 +148,23 @@ local function ApplyButtonMicroInteractions(btn: GuiButton)
     end)
 end
 
--- Alterna la visibilidad de un modal con animación fluida de escala (Quart Out)
+-- Consulta el estado formal de un modal
+local function GetModalState(modal: Frame): UIState
+    return ModalStates[modal] or (modal.Visible and "Expanded" or "Minimized")
+end
+
+-- Alterna la visibilidad de un modal con animación fluida de escala y máquina de estados
 local function AnimateModalToggle(modal: Frame, open: boolean)
+    local currentState = GetModalState(modal)
+    if currentState == "Transitioning" then
+        return -- Debounce: previene carreras y spam rápido de clics
+    end
+    if (open and currentState == "Expanded") or (not open and currentState == "Minimized") then
+        return
+    end
+
+    ModalStates[modal] = "Transitioning"
+
     local scale = modal:FindFirstChildOfClass("UIScale")
     if not scale then
         scale = Instance.new("UIScale")
@@ -145,18 +175,23 @@ local function AnimateModalToggle(modal: Frame, open: boolean)
     if open then
         modal.Visible = true
         scale.Scale = 0.88
-        TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        local tween = TweenService:Create(scale, TweenInfo.new(UI_CONFIG.MODAL_TWEEN_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
             Scale = 1.0,
-        }):Play()
+        })
+        tween:Play()
+        task.delay(UI_CONFIG.MODAL_TWEEN_DURATION, function()
+            ModalStates[modal] = "Expanded"
+        end)
     else
-        local tween = TweenService:Create(scale, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        local tween = TweenService:Create(scale, TweenInfo.new(UI_CONFIG.MODAL_TWEEN_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
             Scale = 0.88,
         })
         tween:Play()
-        task.delay(0.18, function()
+        task.delay(UI_CONFIG.MODAL_TWEEN_DURATION, function()
             if scale.Scale <= 0.9 then
                 modal.Visible = false
             end
+            ModalStates[modal] = "Minimized"
         end)
     end
 end
@@ -315,7 +350,7 @@ local function AddCornerAccents(parent: GuiObject, color: Color3, length: number
 end
 
 -- Crea un botón de cierre estándar [X] estilizado
-local function CreateCloseButton(parent: Frame, onClose: () -> ()): TextButton
+local function CreateCloseButton(parent: Frame, onClose: (() -> ())?): TextButton
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseButton"
     closeBtn.Size = UDim2.fromOffset(32, 32)
@@ -343,7 +378,7 @@ local function PulseEnergyLabel()
     if not scale then
         scale = Instance.new("UIScale", EnergyLabel)
     end
-    TweenService:Create(scale, TweenInfo.new(0.09, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.08 }):Play()
+    TweenService:Create(scale, TweenInfo.new(0.09, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = UI_CONFIG.ENERGY_PULSE_SCALE }):Play()
     task.delay(0.1, function()
         if scale and scale.Parent then
             TweenService:Create(scale, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1.0 }):Play()
@@ -358,7 +393,7 @@ RunService.RenderStepped:Connect(function(dt: number)
         if math.abs(diff) < 2 then
             DisplayedEnergy = TargetEnergy
         else
-            DisplayedEnergy = math.floor(DisplayedEnergy + diff * math.clamp(dt * 12, 0.05, 1))
+            DisplayedEnergy = math.floor(DisplayedEnergy + diff * math.clamp(dt * UI_CONFIG.LERP_SPEED, 0.05, 1))
         end
         if EnergyLabel then
             EnergyLabel.Text = "⚡ " .. FormatNumber.FormatCompact(DisplayedEnergy) .. " ENERGÍA"
@@ -448,13 +483,13 @@ function UIController.InitializeUI()
     EnergyLabel.TextScaled = true
     EnergyLabel.Parent = topFrame
 
-    -- Botón de Minimizar Barra Superior [▲] (Esquina superior derecha del marco)
+    -- Botón de Minimizar Barra Superior [—] (Esquina superior derecha del marco)
     local collapseTopBtn = Instance.new("TextButton")
     collapseTopBtn.Name = "CollapseTopBtn"
     collapseTopBtn.Size = UDim2.fromOffset(32, 26)
     collapseTopBtn.Position = UDim2.new(1, -38, 0, 4)
     collapseTopBtn.BackgroundColor3 = palette.DEEP_SLATE
-    collapseTopBtn.Text = "▲"
+    collapseTopBtn.Text = "—"
     collapseTopBtn.TextColor3 = palette.CYAN_PLASMA
     collapseTopBtn.Font = Enum.Font.FredokaOne
     collapseTopBtn.TextSize = 14
@@ -520,13 +555,12 @@ function UIController.InitializeUI()
     xpLabel.Parent = xpBarBg
 
     -- Pestaña compacta para restaurar la barra superior cuando está minimizada
-    local isTopCollapsed = false
     local topRevealTab = Instance.new("TextButton")
     topRevealTab.Name = "TopRevealTab"
-    topRevealTab.Size = UDim2.new(0, 140, 0, 28)
-    topRevealTab.Position = UDim2.new(0.5, -70, 0, 6)
+    topRevealTab.Size = UDim2.new(0, 150, 0, 28)
+    topRevealTab.Position = UDim2.new(0.5, -75, 0, 6)
     topRevealTab.BackgroundColor3 = palette.DEEP_SLATE
-    topRevealTab.Text = "▼ MOSTRAR HUD"
+    topRevealTab.Text = "+ MOSTRAR HUD"
     topRevealTab.TextColor3 = palette.CYAN_PLASMA
     topRevealTab.Font = Enum.Font.FredokaOne
     topRevealTab.TextSize = 12
@@ -538,26 +572,34 @@ function UIController.InitializeUI()
     ApplyButtonMicroInteractions(topRevealTab)
 
     local function SetTopCollapsed(collapsed: boolean)
-        isTopCollapsed = collapsed
-        local tweenInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        if isTopCollapsed then
+        if TopHUDState == "Transitioning" then return end
+        if (collapsed and TopHUDState == "Minimized") or (not collapsed and TopHUDState == "Expanded") then
+            return
+        end
+
+        TopHUDState = "Transitioning"
+        local tweenInfo = TweenInfo.new(UI_CONFIG.TOP_HUD_TWEEN_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        if collapsed then
             -- Animar completamente hacia arriba y ocultar
             local tween = TweenService:Create(topFrame, tweenInfo, {
                 Position = UDim2.new(0.5, -220, 0, -180),
             })
             tween:Play()
-            task.delay(0.22, function()
-                if isTopCollapsed then
-                    topFrame.Visible = false
-                    topRevealTab.Visible = true
-                end
+            task.delay(UI_CONFIG.TOP_HUD_TWEEN_DURATION, function()
+                topFrame.Visible = false
+                topRevealTab.Visible = true
+                TopHUDState = "Minimized"
             end)
         else
             topRevealTab.Visible = false
             topFrame.Visible = true
-            TweenService:Create(topFrame, tweenInfo, {
+            local tween = TweenService:Create(topFrame, tweenInfo, {
                 Position = UDim2.new(0.5, -220, 0, 10),
-            }):Play()
+            })
+            tween:Play()
+            task.delay(UI_CONFIG.TOP_HUD_TWEEN_DURATION, function()
+                TopHUDState = "Expanded"
+            end)
         end
     end
 
@@ -570,11 +612,10 @@ function UIController.InitializeUI()
     end)
 
     function UIController.ToggleTopHUD()
-        SetTopCollapsed(not isTopCollapsed)
+        SetTopCollapsed(TopHUDState == "Expanded")
     end
 
     -- 3. Barra Lateral de Botones de Navegación (Dock en el lateral izquierdo con pestaña retráctil permanente)
-    local isDockCollapsed = false
     local dockFrame = Instance.new("Frame")
     dockFrame.Name = "NavigationDock"
     dockFrame.Size = UDim2.new(0, 170, 0, 110)
@@ -628,7 +669,7 @@ function UIController.InitializeUI()
     dockCollapseBtn.Size = UDim2.fromOffset(28, 46)
     dockCollapseBtn.Position = UDim2.new(0, 134, 0.5, -23)
     dockCollapseBtn.BackgroundColor3 = palette.DEEP_SLATE
-    dockCollapseBtn.Text = "◀"
+    dockCollapseBtn.Text = "—"
     dockCollapseBtn.TextColor3 = palette.CYAN_PLASMA
     dockCollapseBtn.Font = Enum.Font.FredokaOne
     dockCollapseBtn.TextSize = 15
@@ -639,21 +680,30 @@ function UIController.InitializeUI()
     ApplyButtonMicroInteractions(dockCollapseBtn)
 
     local function SetDockCollapsed(collapsed: boolean)
-        isDockCollapsed = collapsed
-        local targetX = isDockCollapsed and -130 or 15
-        dockCollapseBtn.Text = isDockCollapsed and "▶" or "◀"
+        if DockState == "Transitioning" then return end
+        if (collapsed and DockState == "Minimized") or (not collapsed and DockState == "Expanded") then
+            return
+        end
 
-        TweenService:Create(dockFrame, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        DockState = "Transitioning"
+        local targetX = collapsed and -130 or 15
+        dockCollapseBtn.Text = collapsed and "+" or "—"
+
+        local tween = TweenService:Create(dockFrame, TweenInfo.new(UI_CONFIG.TOP_HUD_TWEEN_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             Position = UDim2.new(0, targetX, 0.5, -55),
-        }):Play()
+        })
+        tween:Play()
+        task.delay(UI_CONFIG.TOP_HUD_TWEEN_DURATION, function()
+            DockState = collapsed and "Minimized" or "Expanded"
+        end)
     end
 
     dockCollapseBtn.MouseButton1Click:Connect(function()
-        SetDockCollapsed(not isDockCollapsed)
+        SetDockCollapsed(DockState == "Expanded")
     end)
 
     function UIController.ToggleNavigationDock()
-        SetDockCollapsed(not isDockCollapsed)
+        SetDockCollapsed(DockState == "Expanded")
     end
 
     -- 4. MODAL DEL NÚCLEO DE FARMEAR (Oculto por defecto - Estilo Deep Slate)
@@ -669,9 +719,7 @@ function UIController.InitializeUI()
     CreateStroke(ReactorModal, 2.5, palette.ELECTRIC_COBALT)
     AddModernGradient(ReactorModal)
     AddCornerAccents(ReactorModal, palette.CYAN_PLASMA, 20, 3)
-    CreateCloseButton(ReactorModal, function()
-        ReactorModal.Visible = false
-    end)
+    CreateCloseButton(ReactorModal)
 
     local reactorTitle = Instance.new("TextLabel")
     reactorTitle.Size = UDim2.new(1, -50, 0, 40)
@@ -931,9 +979,7 @@ function UIController.InitializeUI()
     CreateCorner(ShopModal, 16)
     CreateStroke(ShopModal, 2.5, palette.ENERGY_GOLD)
     AddModernGradient(ShopModal)
-    CreateCloseButton(ShopModal, function()
-        ShopModal.Visible = false
-    end)
+    CreateCloseButton(ShopModal)
 
     local shopTitle = Instance.new("TextLabel")
     shopTitle.Size = UDim2.new(1, -50, 0, 42)
@@ -984,7 +1030,7 @@ function UIController.InitializeUI()
 
     -- 7. Conexiones de apertura y cierre de botones con animación fluida
     farmToggleBtn.MouseButton1Click:Connect(function()
-        if ReactorModal.Visible then
+        if GetModalState(ReactorModal) == "Expanded" then
             AnimateModalToggle(ReactorModal, false)
         else
             AnimateModalToggle(ReactorModal, true)
@@ -993,7 +1039,7 @@ function UIController.InitializeUI()
     end)
 
     shopToggleBtn.MouseButton1Click:Connect(function()
-        if ShopModal.Visible then
+        if GetModalState(ShopModal) == "Expanded" then
             AnimateModalToggle(ShopModal, false)
         else
             AnimateModalToggle(ShopModal, true)

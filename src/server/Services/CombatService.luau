@@ -16,6 +16,18 @@ local FormatNumber = require(Shared.Utils.FormatNumber)
 -- Textura de partícula oficial nativa (nítida y transparente)
 local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 
+-- [HIPÓTESIS DE AJUSTE] Configuración autoritativa de Combate Skywars y Knockback
+local COMBAT_CONFIG = {
+    BASE_KNOCKBACK_HORIZONTAL = 65, -- [HIPÓTESIS DE AJUSTE] Impulso horizontal base de empuje
+    BASE_KNOCKBACK_VERTICAL = 26, -- [HIPÓTESIS DE AJUSTE] Arco vertical de lanzamiento parabólico
+    KNOCKBACK_SCALING_PER_LEVEL = 0.45, -- [HIPÓTESIS DE AJUSTE] Multiplicador de empuje por Nivel de Aura
+    MAX_KNOCKBACK_BONUS = 45, -- [HIPÓTESIS DE AJUSTE] Tope máximo de empuje adicional
+    DAMAGE_PARABOLA_HEIGHT = 3.8, -- [HIPÓTESIS DE AJUSTE] Altura de salto en parábola del daño
+    DAMAGE_PARABOLA_SPREAD = 4.0, -- [HIPÓTESIS DE AJUSTE] Dispersión horizontal de números de daño
+    ANTI_EXPLOIT_MAX_RANGE_PADDING = 8, -- [HIPÓTESIS DE AJUSTE] Margen de tolerancia de red para alcance de golpe
+    VOID_KILL_HEIGHT = -60, -- [HIPÓTESIS DE AJUSTE] Cota inferior en studs para considerar caída al vacío
+}
+
 local CombatService = {}
 local BoosterFolder: Folder
 local TitanCurrentHP: number = GameConfig.TITAN.MaxHealth
@@ -402,6 +414,10 @@ end
 function CombatService.ProcessPlayerAttack(player: Player)
     local character = player.Character
     if not character then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return end
+    if humanoid:GetState() == Enum.HumanoidStateType.Dead or humanoid.PlatformStand then return end
+
     local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
     if not root then return end
 
@@ -492,16 +508,17 @@ function CombatService.ProcessPlayerAttack(player: Player)
                 if otherRoot and otherHumanoid and otherHumanoid.Health > 0 then
                     if IslandService.IsInPvPZone(otherRoot.Position) then
                         local distance = (otherRoot.Position - attackCFrame.Position).Magnitude
-                        if distance <= weaponDef.Range then
+                        local maxDistance = weaponDef.Range + COMBAT_CONFIG.ANTI_EXPLOIT_MAX_RANGE_PADDING
+                        if distance <= maxDistance then
                             otherHumanoid:TakeDamage(hitDamage)
                             SpawnImpactStarburst(otherRoot.Position, weaponDef.AccentColor, auraDef.RarityColor)
                             SpawnFloatingDamageNumber(otherRoot.Position + Vector3.new(0, 3, 0), hitDamage, isCrit, weaponDef.AccentColor)
 
-                            -- Empuje físico direccional hacia el vacío escalado por nivel de Aura
+                            -- Empuje físico direccional hacia el vacío escalado por nivel de Aura [HIPÓTESIS DE AJUSTE]
                             local auraLevel = profile.AuraLevel or 1
-                            local levelForceBonus = math.clamp(auraLevel * 0.45, 0, 45)
-                            local fuerzaH = 65 + levelForceBonus
-                            local fuerzaV = 26 + (levelForceBonus * 0.3)
+                            local levelForceBonus = math.clamp(auraLevel * COMBAT_CONFIG.KNOCKBACK_SCALING_PER_LEVEL, 0, COMBAT_CONFIG.MAX_KNOCKBACK_BONUS)
+                            local fuerzaH = COMBAT_CONFIG.BASE_KNOCKBACK_HORIZONTAL + levelForceBonus
+                            local fuerzaV = COMBAT_CONFIG.BASE_KNOCKBACK_VERTICAL + (levelForceBonus * 0.3)
                             local knockDir = (otherRoot.Position - root.Position).Unit
                             otherRoot.AssemblyLinearVelocity = Vector3.new(knockDir.X * fuerzaH, fuerzaV, knockDir.Z * fuerzaH)
 

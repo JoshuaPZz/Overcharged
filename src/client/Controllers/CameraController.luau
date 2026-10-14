@@ -8,14 +8,29 @@ local Lighting = game:GetService("Lighting")
 local Camera = Workspace.CurrentCamera
 local CameraController = {}
 
-local BaseFOV = 70
-local CurrentTargetFOV = 70
+-- [HIPÓTESIS DE AJUSTE] Configuración de Cámara Cinematográfica y Shake
+local CONFIG = {
+    BASE_FOV = 70, -- [HIPÓTESIS DE AJUSTE] FOV estándar en reposo
+    SPRINT_FOV = 84, -- [HIPÓTESIS DE AJUSTE] FOV dinámico al esprintar
+    DASH_FOV = 88, -- [HIPÓTESIS DE AJUSTE] FOV al ejecutar evasión Dash
+    MAX_TILT_ANGLE = 2.2, -- [HIPÓTESIS DE AJUSTE] Inclinación máxima de cámara en virajes
+    HITSTOP_FLASH_BRIGHTNESS = 0.45, -- [HIPÓTESIS DE AJUSTE] Brillo del destello de impacto
+    HITSTOP_FLASH_CONTRAST = 0.35, -- [HIPÓTESIS DE AJUSTE] Contraste del destello de impacto
+    HITSTOP_DURATION = 0.05, -- [HIPÓTESIS DE AJUSTE] Duración en segundos de los impact frames
+}
+
+local BaseFOV = CONFIG.BASE_FOV
+local CurrentTargetFOV = CONFIG.BASE_FOV
 
 -- Estado de Camera Shake
 local ShakeIntensity = 0
 local ShakeDuration = 0
 local ShakeElapsed = 0
 local ShakeFrequency = 24
+
+-- Estado de Camera Tilt lateral
+local CurrentCameraTilt = 0
+local TargetCameraTilt = 0
 
 -- Efecto de Hitstop / Impact Frames
 local hitstopEffect: ColorCorrectionEffect?
@@ -32,10 +47,6 @@ function CameraController.Initialize()
     hitstopEffect.Contrast = 0
     hitstopEffect.Parent = Lighting
 
--- Estado de Camera Tilt lateral
-local CurrentCameraTilt = 0
-local TargetCameraTilt = 0
-
     -- Bucle de renderizado procedural de sacudida e inclinación dinámica
     RunService.RenderStepped:Connect(function(dt: number)
         -- 1. Inclinación sutil de cámara (Camera Tilt) según el movimiento lateral
@@ -47,7 +58,7 @@ local TargetCameraTilt = 0
             if moveDir.Magnitude > 0.1 then
                 local right = Camera.CFrame.RightVector
                 local lateral = moveDir:Dot(right)
-                TargetCameraTilt = -lateral * 2.2
+                TargetCameraTilt = -lateral * CONFIG.MAX_TILT_ANGLE
             else
                 TargetCameraTilt = 0
             end
