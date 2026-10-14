@@ -51,10 +51,19 @@ local function CreateAuraTrail(character: Model, colorA: Color3, colorB: Color3)
     trail.Attachment0 = attTop
     trail.Attachment1 = attBottom
     trail.Color = ColorSequence.new(colorA, colorB)
-    trail.Lifetime = 0.35
+    trail.Lifetime = 0.4
     trail.LightEmission = 0.9
+    trail.LightInfluence = 0
+    trail.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    trail.TextureLength = 1.6
+    trail.TextureMode = Enum.TextureMode.Stretch
+    trail.WidthScale = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(1, 0),
+    })
     trail.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(0, 0.15),
+        NumberSequenceKeypoint.new(0.6, 0.4),
         NumberSequenceKeypoint.new(1, 1),
     })
     trail.Parent = root
@@ -71,12 +80,27 @@ local function CreateAuraHalo(head: BasePart, color: Color3, parentFolder: Folde
     halo.Color = color
     halo.CanCollide = false
     halo.Massless = true
+    halo.CastShadow = false
     halo.Parent = parentFolder
 
     local weld = Instance.new("WeldConstraint")
     weld.Part0 = head
     weld.Part1 = halo
     weld.Parent = halo
+
+    -- Chispas doradas desprendiéndose del halo
+    local att = Instance.new("Attachment", halo)
+    local emit = Instance.new("ParticleEmitter")
+    emit.Name = "HaloSparks"
+    emit.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    emit.Rate = 18
+    emit.Speed = NumberRange.new(0.5, 1.8)
+    emit.Lifetime = NumberRange.new(0.5, 1.1)
+    emit.Color = ColorSequence.new(color)
+    emit.LightEmission = 1
+    emit.Size = NumberSequence.new(0.45, 0)
+    emit.SpreadAngle = Vector2.new(180, 180)
+    emit.Parent = att
 end
 
 -- Construye las Alas de Plasma de Neón (Nivel 150+)
@@ -99,6 +123,7 @@ local function CreateEnergyWings(torso: BasePart, colorA: Color3, colorB: Color3
         wing.Color = (idx <= 2) and colorA or colorB
         wing.CanCollide = false
         wing.Massless = true
+        wing.CastShadow = false
         wing.Parent = parentFolder
 
         local weld = Instance.new("WeldConstraint")
@@ -106,15 +131,37 @@ local function CreateEnergyWings(torso: BasePart, colorA: Color3, colorB: Color3
         weld.Part1 = wing
         weld.Parent = wing
 
+        -- Núcleo brillante interior de cada ala (doble capa para mayor volumen)
+        local wingCore = Instance.new("Part")
+        wingCore.Name = "EnergyWingCore"
+        wingCore.Size = Vector3.new(0.3, 3.6, 0.55)
+        wingCore.CFrame = wing.CFrame
+        wingCore.Shape = Enum.PartType.Block
+        wingCore.Material = Enum.Material.Neon
+        wingCore.Color = Color3.new(1, 1, 1)
+        wingCore.Transparency = 0.35
+        wingCore.CanCollide = false
+        wingCore.Massless = true
+        wingCore.CastShadow = false
+        wingCore.Parent = parentFolder
+
+        local coreWeld = Instance.new("WeldConstraint")
+        coreWeld.Part0 = wing
+        coreWeld.Part1 = wingCore
+        coreWeld.Parent = wingCore
+
         -- Partículas desprendiéndose de las alas
         local att = Instance.new("Attachment", wing)
         local emit = Instance.new("ParticleEmitter")
-        emit.Rate = 12
+        emit.Name = "WingSparks"
+        emit.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+        emit.Rate = 16
         emit.Speed = NumberRange.new(1, 3)
-        emit.Lifetime = NumberRange.new(0.4, 0.8)
+        emit.SpreadAngle = Vector2.new(60, 60)
+        emit.Lifetime = NumberRange.new(0.4, 0.9)
         emit.Color = ColorSequence.new(colorA, colorB)
         emit.LightEmission = 1
-        emit.Size = NumberSequence.new(0.8, 0)
+        emit.Size = NumberSequence.new(0.6, 0)
         emit.Parent = att
     end
 end
@@ -170,6 +217,10 @@ function AuraService.ApplyAuraToCharacter(player: Player, auraName: string)
     rankStroke.Color = Color3.new(0, 0, 0)
     rankStroke.Parent = rankLabel
 
+    local rankGradient = Instance.new("UIGradient")
+    rankGradient.Color = ColorSequence.new(rankColor, Color3.fromRGB(255, 255, 255))
+    rankGradient.Parent = rankLabel
+
     -- Título de Aura
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, 0, 0, 16)
@@ -186,6 +237,10 @@ function AuraService.ApplyAuraToCharacter(player: Player, auraName: string)
     titleStroke.Color = Color3.new(0, 0, 0)
     titleStroke.Parent = titleLabel
 
+    local titleGradient = Instance.new("UIGradient")
+    titleGradient.Color = ColorSequence.new(auraDef.RarityColor, auraDef.SecondaryColor or Color3.fromRGB(255, 255, 255))
+    titleGradient.Parent = titleLabel
+
     -- Nombre del Jugador
     local playerLabel = Instance.new("TextLabel")
     playerLabel.Size = UDim2.new(1, 0, 0, 12)
@@ -200,10 +255,20 @@ function AuraService.ApplyAuraToCharacter(player: Player, auraName: string)
     -- 2. SISTEMA DE AURAS PROCEDURALES SOL'S RNG / ANIME AAA
     AuraVFXModule.AttachAuraVFX(character, auraDef, level)
 
+    -- Estela de movimiento luminosa al correr (Nivel 25+)
+    if level >= 25 then
+        CreateAuraTrail(character, auraDef.RarityColor, auraDef.SecondaryColor or Color3.fromRGB(255, 255, 255))
+    end
+
+    -- Halo / corona de energía sobre la cabeza (Nivel 75+)
+    if level >= 75 then
+        CreateAuraHalo(head, auraDef.RarityColor, effectFolder)
+    end
+
     -- Efecto de alas a nivel alto (150+)
     if level >= 150 then
         local isDoubleWings = level >= 300
-        CreateEnergyWings(torso, auraDef.RarityColor, auraDef.SecondaryColor, effectFolder, isDoubleWings)
+        CreateEnergyWings(torso, auraDef.RarityColor, auraDef.SecondaryColor or Color3.fromRGB(255, 255, 255), effectFolder, isDoubleWings)
     end
 
     -- Sonido 3D envolvente de activación

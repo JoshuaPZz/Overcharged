@@ -36,6 +36,7 @@ local function SpawnMobDeathEffect(position: Vector3, colorA: Color3, colorB: Co
 
     local att = Instance.new("Attachment", p)
     local emit = Instance.new("ParticleEmitter")
+    emit.Texture = "rbxasset://textures/particles/sparkles_main.dds"
     emit.Rate = 0
     emit.Speed = NumberRange.new(12, 24)
     emit.Lifetime = NumberRange.new(0.3, 0.6)
@@ -158,7 +159,7 @@ local function CreateMobModel(mobKey: string, mobDef: any, spawnPos: Vector3): M
         core.Shape = Enum.PartType.Ball
         core.Size = Vector3.new(3.6, 3.6, 3.6)
         core.Position = spawnPos + Vector3.new(0, 3.5, 0)
-        core.Material = Enum.Material.SmoothPlastic
+        core.Material = Enum.Material.Metal
         core.Color = palette.DEEP_SLATE
         core.Anchored = true
         core.CanCollide = true
@@ -201,7 +202,7 @@ local function CreateMobModel(mobKey: string, mobDef: any, spawnPos: Vector3): M
         torso.Name = "HumanoidRootPart"
         torso.Size = Vector3.new(5.0, 6.0, 3.4)
         torso.Position = spawnPos + Vector3.new(0, 4.0, 0)
-        torso.Material = Enum.Material.SmoothPlastic
+        torso.Material = Enum.Material.Metal
         torso.Color = Color3.fromRGB(34, 42, 60)
         torso.Anchored = true
         torso.CanCollide = true
@@ -212,7 +213,7 @@ local function CreateMobModel(mobKey: string, mobDef: any, spawnPos: Vector3): M
         local head = Instance.new("Part")
         head.Size = Vector3.new(3.0, 2.5, 2.6)
         head.Position = torso.Position + Vector3.new(0, 4.2, 0)
-        head.Material = Enum.Material.SmoothPlastic
+        head.Material = Enum.Material.Metal
         head.Color = palette.DEEP_SLATE
         head.Anchored = true
         head.CanCollide = true
@@ -243,7 +244,7 @@ local function CreateMobModel(mobKey: string, mobDef: any, spawnPos: Vector3): M
             local fist = Instance.new("Part")
             fist.Size = Vector3.new(2.4, 3.2, 2.4)
             fist.Position = torso.Position + Vector3.new(side * 4.2, -0.5, -0.6)
-            fist.Material = Enum.Material.SmoothPlastic
+            fist.Material = Enum.Material.Metal
             fist.Color = palette.DEEP_SLATE
             fist.Anchored = true
             fist.CanCollide = true
@@ -256,7 +257,7 @@ local function CreateMobModel(mobKey: string, mobDef: any, spawnPos: Vector3): M
         core.Name = "HumanoidRootPart"
         core.Size = Vector3.new(3.2, 5.5, 2.4)
         core.Position = spawnPos + Vector3.new(0, 5.0, 0)
-        core.Material = Enum.Material.SmoothPlastic
+        core.Material = Enum.Material.Metal
         core.Color = Color3.fromRGB(24, 18, 38)
         core.Anchored = true
         core.CanCollide = true

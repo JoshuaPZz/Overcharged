@@ -34,16 +34,16 @@ local function SetupLighting()
     -- 1. Bloom Effect
     local bloom = Lighting:FindFirstChild("GameBloom") or Instance.new("BloomEffect")
     bloom.Name = "GameBloom"
-    bloom.Intensity = 0.8
-    bloom.Size = 24
-    bloom.Threshold = 1.8
+    bloom.Intensity = 0.95
+    bloom.Size = 26
+    bloom.Threshold = 1.6
     bloom.Parent = Lighting
 
     -- 2. Color Correction
     local colorCorrection = Lighting:FindFirstChild("GameColorCorrection") or Instance.new("ColorCorrectionEffect")
     colorCorrection.Name = "GameColorCorrection"
-    colorCorrection.Contrast = 0.12
-    colorCorrection.Saturation = 0.20
+    colorCorrection.Contrast = 0.16
+    colorCorrection.Saturation = 0.26
     colorCorrection.TintColor = Color3.fromRGB(250, 248, 255)
     colorCorrection.Parent = Lighting
 
@@ -125,7 +125,7 @@ local function CreateStylizedTree(position: Vector3, parent: Instance): Model
     trunk.Name = "Trunk"
     trunk.Size = Vector3.new(2.0, 7.5, 2.0)
     trunk.Position = position + Vector3.new(0, 3.75, 0)
-    trunk.Material = Enum.Material.SmoothPlastic
+    trunk.Material = Enum.Material.Wood
     trunk.Color = Color3.fromRGB(68, 48, 36)
     trunk.Anchored = true
     trunk.CanCollide = true
@@ -142,7 +142,7 @@ local function CreateStylizedTree(position: Vector3, parent: Instance): Model
         leaves.Name = "Leaves_" .. tostring(idx)
         leaves.Size = tier.size
         leaves.Position = position + Vector3.new(0, tier.y, 0)
-        leaves.Material = Enum.Material.SmoothPlastic
+        leaves.Material = Enum.Material.LeafyGrass
         leaves.Color = tier.color
         leaves.Anchored = true
         leaves.CanCollide = true
@@ -160,7 +160,7 @@ local function CreateStylizedRock(position: Vector3, size: Vector3, rotY: number
     rock.Size = size
     rock.Position = position
     rock.CFrame = CFrame.new(position) * CFrame.Angles(math.rad(10), math.rad(rotY), math.rad(8))
-    rock.Material = Enum.Material.SmoothPlastic
+    rock.Material = Enum.Material.Rock
     rock.Color = Color3.fromRGB(68, 78, 98)
     rock.Anchored = true
     rock.CanCollide = true
@@ -175,7 +175,7 @@ local function CreateSteppingStone(position: Vector3, radius: number, parent: In
     stone.Shape = Enum.PartType.Cylinder
     stone.Size = Vector3.new(0.35, radius * 2, radius * 2)
     stone.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
-    stone.Material = Enum.Material.SmoothPlastic
+    stone.Material = Enum.Material.Cobblestone
     stone.Color = Color3.fromRGB(60, 70, 90)
     stone.Anchored = true
     stone.CanCollide = true
@@ -193,7 +193,7 @@ local function CreateGlowingFlora(position: Vector3, color: Color3, parent: Inst
     local stem = Instance.new("Part")
     stem.Size = Vector3.new(0.5, 2.0, 0.5)
     stem.Position = position + Vector3.new(0, 1.0, 0)
-    stem.Material = Enum.Material.SmoothPlastic
+    stem.Material = Enum.Material.Wood
     stem.Color = Color3.fromRGB(45, 55, 75)
     stem.Anchored = true
     stem.CanCollide = false
@@ -236,7 +236,7 @@ local function BuildCentralIsland()
         centerPos,
         radius,
         14,
-        Enum.Material.SmoothPlastic,
+        Enum.Material.Slate,
         palette.DEEP_SLATE,
         CenterIslandFolder
     )
@@ -260,7 +260,7 @@ local function BuildCentralIsland()
         centerPos + Vector3.new(0, 0.6, 0),
         radius - 2.5,
         0.8,
-        Enum.Material.SmoothPlastic,
+        Enum.Material.Slate,
         Color3.fromRGB(25, 30, 45),
         CenterIslandFolder
     )
@@ -271,7 +271,7 @@ local function BuildCentralIsland()
         centerPos + Vector3.new(0, 0.8, 0),
         radius - 6,
         1,
-        Enum.Material.SmoothPlastic,
+        Enum.Material.Slate,
         Color3.fromRGB(34, 40, 58),
         CenterIslandFolder
     )
@@ -296,7 +296,7 @@ local function BuildCentralIsland()
             centerPos + Vector3.new(0, yOff + 0.02, 0),
             r - 2.5,
             0.14,
-            Enum.Material.SmoothPlastic,
+            Enum.Material.Slate,
             Color3.fromRGB(34, 40, 58),
             CenterIslandFolder
         )
@@ -312,7 +312,7 @@ local function BuildCentralIsland()
         centerPos + Vector3.new(0, 1.2, 0),
         125,
         1.8,
-        Enum.Material.SmoothPlastic,
+        Enum.Material.Slate,
         Color3.fromRGB(36, 44, 66),
         CenterIslandFolder
     )
@@ -326,7 +326,7 @@ local function BuildCentralIsland()
         col.Name = "AncientRuinCol_" .. tostring(colIdx)
         col.Size = Vector3.new(5.0, 14.0, 5.0)
         col.Position = colPos + Vector3.new(0, 7.0, 0)
-        col.Material = Enum.Material.SmoothPlastic
+        col.Material = Enum.Material.Granite
         col.Color = palette.DEEP_SLATE
         col.Anchored = true
         col.CanCollide = true
@@ -356,7 +356,7 @@ local function BuildCentralIsland()
             centerPos + Vector3.new(0, layer.offsetY, 0),
             radius * layer.radMult,
             layer.thick,
-            Enum.Material.SmoothPlastic,
+            Enum.Material.Rock,
             layer.color,
             CenterIslandFolder
         )
@@ -385,7 +385,7 @@ local function BuildCentralIsland()
         local pylonBase = Instance.new("Part")
         pylonBase.Size = Vector3.new(4.5, 12, 4.5)
         pylonBase.Position = pylonPos + Vector3.new(0, 6, 0)
-        pylonBase.Material = Enum.Material.SmoothPlastic
+        pylonBase.Material = Enum.Material.Metal
         pylonBase.Color = palette.DEEP_SLATE
         pylonBase.Anchored = true
         pylonBase.CanCollide = true
@@ -417,7 +417,7 @@ local function BuildCentralIsland()
         centerPos + Vector3.new(0, 1.4, 0),
         26,
         2.5,
-        Enum.Material.SmoothPlastic,
+        Enum.Material.Slate,
         palette.DEEP_SLATE,
         CenterIslandFolder
     )
@@ -426,7 +426,7 @@ local function BuildCentralIsland()
         centerPos + Vector3.new(0, 3.2, 0),
         19,
         2.5,
-        Enum.Material.SmoothPlastic,
+        Enum.Material.Slate,
         Color3.fromRGB(36, 44, 64),
         CenterIslandFolder
     )
@@ -453,7 +453,7 @@ local function BuildCentralIsland()
     torso.Name = "TitanTorso"
     torso.Size = Vector3.new(16, 24, 12)
     torso.Position = titanOrigin
-    torso.Material = Enum.Material.SmoothPlastic
+    torso.Material = Enum.Material.Metal
     torso.Color = palette.DEEP_SLATE
     torso.Anchored = true
     torso.CanCollide = true
@@ -463,7 +463,7 @@ local function BuildCentralIsland()
     local chestArmor = Instance.new("Part")
     chestArmor.Size = Vector3.new(14, 14, 3)
     chestArmor.Position = titanOrigin + Vector3.new(0, 2, -5.2)
-    chestArmor.Material = Enum.Material.SmoothPlastic
+    chestArmor.Material = Enum.Material.Metal
     chestArmor.Color = Color3.fromRGB(38, 48, 72)
     chestArmor.Anchored = true
     chestArmor.CanCollide = true
@@ -473,7 +473,7 @@ local function BuildCentralIsland()
     local shoulderLeft = Instance.new("Part")
     shoulderLeft.Size = Vector3.new(7, 8, 8)
     shoulderLeft.Position = titanOrigin + Vector3.new(-11, 7, 0)
-    shoulderLeft.Material = Enum.Material.SmoothPlastic
+    shoulderLeft.Material = Enum.Material.Metal
     shoulderLeft.Color = Color3.fromRGB(38, 48, 72)
     shoulderLeft.Anchored = true
     shoulderLeft.CanCollide = true
@@ -482,7 +482,7 @@ local function BuildCentralIsland()
     local shoulderRight = Instance.new("Part")
     shoulderRight.Size = Vector3.new(7, 8, 8)
     shoulderRight.Position = titanOrigin + Vector3.new(11, 7, 0)
-    shoulderRight.Material = Enum.Material.SmoothPlastic
+    shoulderRight.Material = Enum.Material.Metal
     shoulderRight.Color = Color3.fromRGB(38, 48, 72)
     shoulderRight.Anchored = true
     shoulderRight.CanCollide = true
@@ -492,7 +492,7 @@ local function BuildCentralIsland()
     local headPart = Instance.new("Part")
     headPart.Size = Vector3.new(8, 8, 8)
     headPart.Position = titanOrigin + Vector3.new(0, 16, 0)
-    headPart.Material = Enum.Material.SmoothPlastic
+    headPart.Material = Enum.Material.Metal
     headPart.Color = palette.DEEP_SLATE
     headPart.Anchored = true
     headPart.CanCollide = true
@@ -553,7 +553,7 @@ local function BuildCentralIsland()
     handLeft.Name = "HandLeft"
     handLeft.Size = Vector3.new(7, 9, 6)
     handLeft.Position = titanOrigin + Vector3.new(-20, -2, -4)
-    handLeft.Material = Enum.Material.SmoothPlastic
+    handLeft.Material = Enum.Material.Metal
     handLeft.Color = palette.DEEP_SLATE
     handLeft.Anchored = true
     handLeft.CanCollide = true
@@ -573,7 +573,7 @@ local function BuildCentralIsland()
     handRight.Name = "HandRight"
     handRight.Size = Vector3.new(7, 9, 6)
     handRight.Position = titanOrigin + Vector3.new(20, -2, -4)
-    handRight.Material = Enum.Material.SmoothPlastic
+    handRight.Material = Enum.Material.Metal
     handRight.Color = palette.DEEP_SLATE
     handRight.Anchored = true
     handRight.CanCollide = true
@@ -720,7 +720,7 @@ local function BuildPlayerIsland(islandIndex: number)
         islandPos,
         radius,
         5.5,
-        Enum.Material.SmoothPlastic,
+        Enum.Material.Grass,
         palette.MINT_OASIS, -- Verde Menta vibrante
         islandFolder
     )
@@ -731,7 +731,7 @@ local function BuildPlayerIsland(islandIndex: number)
         islandPos + Vector3.new(0, 0.15, 0),
         radius,
         0.5,
-        Enum.Material.SmoothPlastic,
+        Enum.Material.LeafyGrass,
         Color3.fromRGB(16, 185, 129),
         islandFolder
     )
@@ -762,7 +762,7 @@ local function BuildPlayerIsland(islandIndex: number)
             islandPos + Vector3.new(0, layer.offsetY, 0),
             radius * layer.radMult,
             layer.thick,
-            Enum.Material.SmoothPlastic,
+            Enum.Material.Rock,
             layer.color,
             islandFolder
         )
@@ -825,7 +825,7 @@ local function BuildPlayerIsland(islandIndex: number)
         local pole = Instance.new("Part")
         pole.Size = Vector3.new(0.6, 7.5, 0.6)
         pole.Position = lampPos + Vector3.new(0, 3.75, 0)
-        pole.Material = Enum.Material.SmoothPlastic
+        pole.Material = Enum.Material.Metal
         pole.Color = palette.DEEP_SLATE
         pole.Anchored = true
         pole.CanCollide = true
@@ -834,7 +834,7 @@ local function BuildPlayerIsland(islandIndex: number)
         local arm = Instance.new("Part")
         arm.Size = Vector3.new(2.2, 0.5, 0.5)
         arm.Position = lampPos + Vector3.new(0.8, 7.5, 0)
-        arm.Material = Enum.Material.SmoothPlastic
+        arm.Material = Enum.Material.Metal
         arm.Color = palette.DEEP_SLATE
         arm.Anchored = true
         arm.CanCollide = false
@@ -866,7 +866,7 @@ local function BuildPlayerIsland(islandIndex: number)
     spawnLocation.Name = "IslandSpawn"
     spawnLocation.Size = Vector3.new(10, 0.8, 10)
     spawnLocation.Position = islandPos + Vector3.new(0, 0.4, -15)
-    spawnLocation.Material = Enum.Material.SmoothPlastic
+    spawnLocation.Material = Enum.Material.Concrete
     spawnLocation.Color = palette.DEEP_SLATE
     spawnLocation.Anchored = true
     spawnLocation.CanCollide = true
@@ -890,7 +890,7 @@ local function BuildPlayerIsland(islandIndex: number)
     pedestal.Name = "ReactorPedestal"
     pedestal.Size = Vector3.new(8, 3.5, 8)
     pedestal.Position = islandPos + Vector3.new(0, 1.75, 0)
-    pedestal.Material = Enum.Material.SmoothPlastic
+    pedestal.Material = Enum.Material.Marble
     pedestal.Color = palette.DEEP_SLATE
     pedestal.Anchored = true
     pedestal.CanCollide = true
@@ -987,7 +987,7 @@ local function BuildPlayerIsland(islandIndex: number)
     bridgeFloor.Name = "BridgeFloor"
     bridgeFloor.Size = Vector3.new(12, 1.6, bridgeDistance)
     bridgeFloor.CFrame = CFrame.lookAt(bridgeMid, endPoint)
-    bridgeFloor.Material = Enum.Material.SmoothPlastic
+    bridgeFloor.Material = Enum.Material.DiamondPlate
     bridgeFloor.Color = Color3.fromRGB(36, 44, 62)
     bridgeFloor.Anchored = true
     bridgeFloor.CanCollide = true
@@ -1002,7 +1002,7 @@ local function BuildPlayerIsland(islandIndex: number)
         rib.Name = "BridgeRib_" .. tostring(r)
         rib.Size = Vector3.new(12.6, 0.3, 1.4)
         rib.CFrame = bridgeFloor.CFrame * CFrame.new(0, 0.85, ribOffset)
-        rib.Material = Enum.Material.SmoothPlastic
+        rib.Material = Enum.Material.Metal
         rib.Color = palette.DEEP_SLATE
         rib.Anchored = true
         rib.CanCollide = true
@@ -1030,7 +1030,7 @@ local function BuildPlayerIsland(islandIndex: number)
         local postL = Instance.new("Part")
         postL.Size = Vector3.new(0.8, 3.6, 0.8)
         postL.CFrame = bridgeFloor.CFrame * CFrame.new(-6.0, 2.0, postOffset)
-        postL.Material = Enum.Material.SmoothPlastic
+        postL.Material = Enum.Material.Metal
         postL.Color = palette.DEEP_SLATE
         postL.Anchored = true
         postL.CanCollide = true
@@ -1050,7 +1050,7 @@ local function BuildPlayerIsland(islandIndex: number)
         local postR = Instance.new("Part")
         postR.Size = Vector3.new(0.8, 3.6, 0.8)
         postR.CFrame = bridgeFloor.CFrame * CFrame.new(6.0, 2.0, postOffset)
-        postR.Material = Enum.Material.SmoothPlastic
+        postR.Material = Enum.Material.Metal
         postR.Color = palette.DEEP_SLATE
         postR.Anchored = true
         postR.CanCollide = true
@@ -1138,7 +1138,7 @@ local function BuildPlayerIsland(islandIndex: number)
         curb.Shape = Enum.PartType.Cylinder
         curb.Size = Vector3.new(0.5, 8.5, 8.5)
         curb.CFrame = CFrame.new(padPos + Vector3.new(0, 0.25, 0)) * CFrame.Angles(0, 0, math.rad(90))
-        curb.Material = Enum.Material.SmoothPlastic
+        curb.Material = Enum.Material.Cobblestone
         curb.Color = palette.DEEP_SLATE
         curb.Anchored = true
         curb.CanCollide = true
