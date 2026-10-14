@@ -96,6 +96,74 @@ function AuraVFXModule.AttachAuraVFX(character: Model, auraDef: any, level: numb
     sparkEmitter.EmissionDirection = Enum.NormalId.Top
     sparkEmitter.Parent = hrpAttachment
 
+    -- CAPAS POR RAREZA (1 Común .. 5 Mítica)
+    local mult = auraDef.Multiplier or 1
+    local tier = mult >= 15 and 5 or mult >= 6 and 4 or mult >= 3 and 3 or mult >= 1.5 and 2 or 1
+    tier = math.max(tier, math.clamp(math.floor(level / 25) + 1, 1, 5))
+
+    local animated: { { w: Weld, base: CFrame, spin: Vector3 } } = {}
+    local function Layer(size: Vector3, shape: Enum.PartType, transp: number, base: CFrame, spin: Vector3, color: Color3?)
+        local p = Instance.new("Part")
+        p.Shape = shape
+        p.Size = size
+        p.Material = Enum.Material.Neon
+        p.Color = color or colorA
+        p.Transparency = transp
+        p.CanCollide = false
+        p.CanQuery = false
+        p.CanTouch = false
+        p.Massless = true
+        p.CastShadow = false
+        p.Parent = container
+        local w = Instance.new("Weld")
+        w.Part0 = hrp
+        w.Part1 = p
+        w.C0 = base
+        w.Parent = p
+        table.insert(animated, { w = w, base = base, spin = spin })
+    end
+
+    if tier >= 2 then -- anillos orbitando
+        Layer(Vector3.new(0.08, 5.2, 5.2), Enum.PartType.Cylinder, 0.55, CFrame.Angles(0, 0, math.rad(70)), Vector3.new(0, 2.2, 0))
+        Layer(Vector3.new(0.08, 4.6, 4.6), Enum.PartType.Cylinder, 0.6, CFrame.Angles(math.rad(60), 0, 0), Vector3.new(1.6, 0, 0), colorB)
+    end
+    if tier >= 3 then -- halo sobre la cabeza
+        Layer(Vector3.new(0.12, 2.2, 2.2), Enum.PartType.Cylinder, 0.25, CFrame.new(0, 3.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0, 1.2, 0), colorB)
+    end
+    if tier >= 4 then -- columna de luz
+        Layer(Vector3.new(30, 3.2, 3.2), Enum.PartType.Cylinder, 0.88, CFrame.new(0, 12, 0) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0, 0.5, 0))
+        pLight.Brightness = 1.6
+        pLight.Range = 18
+    end
+    if tier >= 5 then -- espiral de estrellas
+        local spiral = sparkEmitter:Clone()
+        spiral.Rate = 40
+        spiral.Speed = NumberRange.new(10, 14)
+        spiral.SpreadAngle = Vector2.new(5, 5)
+        spiral.RotSpeed = NumberRange.new(200, 360)
+        spiral.LightEmission = 0.8
+        spiral.Parent = hrpAttachment
+        for i = 1, 3 do
+            Layer(Vector3.new(0.5, 0.5, 0.5), Enum.PartType.Ball, 0.1,
+                CFrame.Angles(0, math.rad(i * 120), 0) * CFrame.new(3.2, 0, 0), Vector3.new(0, 3, 0), colorB)
+        end
+    end
+
+    if #animated > 0 then
+        task.spawn(function()
+            local t = 0
+            while container.Parent do
+                t += 0.03
+                for _, a in ipairs(animated) do
+                    if a.w.Parent then
+                        a.w.C0 = CFrame.Angles(a.spin.X * t, a.spin.Y * t, a.spin.Z * t) * a.base
+                    end
+                end
+                task.wait(0.03)
+            end
+        end)
+    end
+
     -- 4. CÍRCULO RÚNICO / ANILLO DE PODER A LOS PIES DEL AVATAR (Ground Power Ring)
     local floorRing = Instance.new("Part")
     floorRing.Name = "AuraFloorRing"

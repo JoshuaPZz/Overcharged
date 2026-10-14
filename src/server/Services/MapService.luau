@@ -1246,6 +1246,30 @@ local function BuildPlayerIsland(islandIndex: number)
     beam.Transparency = NumberSequence.new(0.25)
     beam.Segments = 16
     beam.Parent = islandFolder
+
+    -- Producción visible: orbes de energía viajan del núcleo a la casa
+    task.spawn(function()
+        while islandFolder.Parent do
+            local orb = Instance.new("Part")
+            orb.Shape = Enum.PartType.Ball
+            orb.Size = Vector3.new(1.1, 1.1, 1.1)
+            orb.Material = Enum.Material.Neon
+            orb.Color = palette.ENERGY_GOLD
+            orb.Anchored = true
+            orb.CanCollide = false
+            orb.CanQuery = false
+            orb.CastShadow = false
+            orb.Position = coreOrb.Position
+            orb.Parent = islandFolder
+            local tw = TweenService:Create(orb, TweenInfo.new(1.4, Enum.EasingStyle.Sine), {
+                Position = houseBase.Position + Vector3.new(0, 3, 0),
+                Size = Vector3.new(0.4, 0.4, 0.4),
+            })
+            tw:Play()
+            tw.Completed:Once(function() orb:Destroy() end)
+            task.wait(1.2)
+        end
+    end)
 end
 
 -- Inicializa y genera todo el mundo físico

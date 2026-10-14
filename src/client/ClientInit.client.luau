@@ -48,6 +48,14 @@ local function PlaySwing()
     sound:Play()
     game:GetService("Debris"):AddItem(sound, 2)
 
+    -- Impulso hacia delante (más fuerte en el golpe final del combo)
+    local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if hrp then
+        local push = comboIndex == 3 and 38 or 18
+        local look = hrp.CFrame.LookVector
+        hrp.AssemblyLinearVelocity = Vector3.new(look.X * push, hrp.AssemblyLinearVelocity.Y, look.Z * push)
+    end
+
     if joint then
         swinging = true
         local orig = joint.C0

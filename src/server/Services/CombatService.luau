@@ -299,6 +299,22 @@ local function BuildProceduralWeapon(weaponDef: Types.WeaponDefinition, auraDef:
     particles.Size = NumberSequence.new(0.45, 0)
     particles.Parent = att
 
+    -- Estela de tajo visible al blandir
+    local a0 = Instance.new("Attachment", blade)
+    a0.Position = Vector3.new(0, bladeLength / 2, 0)
+    local a1 = Instance.new("Attachment", blade)
+    a1.Position = Vector3.new(0, -bladeLength / 2, 0)
+    local trail = Instance.new("Trail")
+    trail.Name = "SlashTrail"
+    trail.Attachment0 = a0
+    trail.Attachment1 = a1
+    trail.Lifetime = 0.18
+    trail.LightEmission = 0.8
+    trail.Color = ColorSequence.new(weaponDef.AccentColor, auraDef.RarityColor)
+    trail.Transparency = NumberSequence.new(0.2, 1)
+    trail.FaceCamera = true
+    trail.Parent = blade
+
     -- La animación y el sonido del golpe se manejan en el cliente (ClientInit),
     -- porque LocalScript.Source no se puede escribir en tiempo de ejecución.
     return tool
