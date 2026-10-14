@@ -46,6 +46,7 @@ local function SpawnCrateBreakEffect(position: Vector3, color: Color3)
 
     local att = Instance.new("Attachment", p)
     local emit = Instance.new("ParticleEmitter")
+    emit.Texture = "rbxasset://textures/particles/sparkles_main.dds"
     emit.Rate = 0
     emit.Speed = NumberRange.new(15, 30)
     emit.Lifetime = NumberRange.new(0.4, 0.7)
@@ -157,7 +158,7 @@ local function CreateCrateModel(chestKey: string, chestDef: any, spawnPos: Vecto
     box.Name = "HumanoidRootPart"
     box.Size = Vector3.new(4.2, 3.0, 3.2)
     box.Position = spawnPos + Vector3.new(0, 1.5, 0)
-    box.Material = Enum.Material.SmoothPlastic
+    box.Material = Enum.Material.WoodPlanks
     box.Color = palette.DEEP_SLATE
     box.Anchored = true
     box.CanCollide = true
@@ -168,7 +169,7 @@ local function CreateCrateModel(chestKey: string, chestDef: any, spawnPos: Vecto
     local lid = Instance.new("Part")
     lid.Size = Vector3.new(4.4, 1.2, 3.4)
     lid.Position = box.Position + Vector3.new(0, 2.0, 0)
-    lid.Material = Enum.Material.SmoothPlastic
+    lid.Material = Enum.Material.WoodPlanks
     lid.Color = Color3.fromRGB(35, 42, 60)
     lid.Anchored = true
     lid.CanCollide = true

@@ -130,7 +130,7 @@ function MovementController.PlaceBridgeBlock()
     block.Name = "BridgeBlockClient"
     block.Size = Vector3.zero
     block.Position = targetPos
-    block.Material = Enum.Material.SmoothPlastic
+    block.Material = Enum.Material.Metal
     block.Color = Color3.fromRGB(36, 44, 62)
     block.Anchored = true
     block.CanCollide = true

@@ -169,7 +169,7 @@ local function BuildTechLab(foundationPos: Vector3, parentFolder: Folder)
     local baseBuilding = Instance.new("Part")
     baseBuilding.Size = Vector3.new(20, 9, 20)
     baseBuilding.Position = foundationPos + Vector3.new(0, 5, 0)
-    baseBuilding.Material = Enum.Material.SmoothPlastic
+    baseBuilding.Material = Enum.Material.Concrete
     baseBuilding.Color = Color3.fromRGB(38, 44, 58)
     baseBuilding.Anchored = true
     baseBuilding.Parent = parentFolder
@@ -188,7 +188,7 @@ local function BuildTechLab(foundationPos: Vector3, parentFolder: Folder)
     local secondFloor = Instance.new("Part")
     secondFloor.Size = Vector3.new(16, 7, 14)
     secondFloor.Position = foundationPos + Vector3.new(0, 13, 2)
-    secondFloor.Material = Enum.Material.SmoothPlastic
+    secondFloor.Material = Enum.Material.Metal
     secondFloor.Color = Color3.fromRGB(25, 30, 42)
     secondFloor.Anchored = true
     secondFloor.Parent = parentFolder

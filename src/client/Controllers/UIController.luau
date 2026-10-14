@@ -398,6 +398,45 @@ function UIController.InitializeUI()
     CreateStroke(topFrame, 2, palette.CYAN_PLASMA)
     AddModernGradient(topFrame)
 
+    -- ═══ LOGO / WORDMARK DEL JUEGO (esquina superior izquierda, branding con degradado) ═══
+    local wordmark = Instance.new("TextLabel")
+    wordmark.Name = "GameWordmark"
+    wordmark.Size = UDim2.fromOffset(280, 40)
+    wordmark.Position = UDim2.new(0, 18, 0, 16)
+    wordmark.BackgroundTransparency = 1
+    wordmark.Font = Enum.Font.FredokaOne
+    wordmark.Text = "OVERCHARGED"
+    wordmark.TextColor3 = Color3.fromRGB(255, 255, 255)
+    wordmark.TextXAlignment = Enum.TextXAlignment.Left
+    wordmark.TextYAlignment = Enum.TextYAlignment.Center
+    wordmark.TextSize = 30
+    wordmark.Parent = ScreenGui
+
+    local wordmarkStroke = Instance.new("UIStroke")
+    wordmarkStroke.Thickness = 2.5
+    wordmarkStroke.Color = Color3.fromRGB(0, 0, 0)
+    wordmarkStroke.Parent = wordmark
+
+    local wordmarkGradient = Instance.new("UIGradient")
+    wordmarkGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, palette.ENERGY_GOLD),
+        ColorSequenceKeypoint.new(0.5, palette.CYAN_PLASMA),
+        ColorSequenceKeypoint.new(1, palette.MINT_OASIS),
+    })
+    wordmarkGradient.Parent = wordmark
+
+    local wordmarkSub = Instance.new("TextLabel")
+    wordmarkSub.Name = "GameWordmarkSub"
+    wordmarkSub.Size = UDim2.fromOffset(280, 16)
+    wordmarkSub.Position = UDim2.new(0, 20, 0, 52)
+    wordmarkSub.BackgroundTransparency = 1
+    wordmarkSub.Font = Enum.Font.GothamBold
+    wordmarkSub.Text = "⚡ AURA FARMING ARENA ⚡"
+    wordmarkSub.TextColor3 = palette.CYAN_PLASMA
+    wordmarkSub.TextXAlignment = Enum.TextXAlignment.Left
+    wordmarkSub.TextSize = 12
+    wordmarkSub.Parent = ScreenGui
+
     EnergyLabel = Instance.new("TextLabel")
     EnergyLabel.Name = "EnergyLabel"
     EnergyLabel.Size = UDim2.new(1, -60, 0, 24)
@@ -644,6 +683,15 @@ function UIController.InitializeUI()
     reactorTitle.TextXAlignment = Enum.TextXAlignment.Left
     reactorTitle.TextSize = 16
     reactorTitle.Parent = ReactorModal
+
+    local reactorTitleStroke = Instance.new("UIStroke")
+    reactorTitleStroke.Thickness = 1.5
+    reactorTitleStroke.Color = Color3.fromRGB(0, 0, 0)
+    reactorTitleStroke.Parent = reactorTitle
+
+    local reactorTitleGradient = Instance.new("UIGradient")
+    reactorTitleGradient.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), palette.CYAN_PLASMA)
+    reactorTitleGradient.Parent = reactorTitle
 
     local reactorDivider = Instance.new("Frame")
     reactorDivider.Name = "ReactorDivider"
@@ -897,6 +945,15 @@ function UIController.InitializeUI()
     shopTitle.TextXAlignment = Enum.TextXAlignment.Left
     shopTitle.TextSize = 17
     shopTitle.Parent = ShopModal
+
+    local shopTitleStroke = Instance.new("UIStroke")
+    shopTitleStroke.Thickness = 1.5
+    shopTitleStroke.Color = Color3.fromRGB(0, 0, 0)
+    shopTitleStroke.Parent = shopTitle
+
+    local shopTitleGradient = Instance.new("UIGradient")
+    shopTitleGradient.Color = ColorSequence.new(palette.ENERGY_GOLD, Color3.fromRGB(255, 255, 255))
+    shopTitleGradient.Parent = shopTitle
 
     UpgradesContainer = Instance.new("ScrollingFrame")
     UpgradesContainer.Name = "UpgradesList"

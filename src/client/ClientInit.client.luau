@@ -219,7 +219,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         UIController.ToggleCinematicMode()
     elseif input.KeyCode == Enum.KeyCode.T then
         UIController.ToggleTopHUD()
-    elseif input.KeyCode == Enum.KeyCode.B then
+    elseif input.KeyCode == Enum.KeyCode.N then
         UIController.ToggleNavigationDock()
     elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         local character = player.Character

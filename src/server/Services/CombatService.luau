@@ -13,6 +13,9 @@ local IslandService = require(script.Parent.IslandService)
 local AuraService = require(script.Parent.AuraService)
 local FormatNumber = require(Shared.Utils.FormatNumber)
 
+-- Textura de partícula oficial nativa (nítida y transparente)
+local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
+
 local CombatService = {}
 local BoosterFolder: Folder
 local TitanCurrentHP: number = GameConfig.TITAN.MaxHealth
@@ -68,12 +71,13 @@ local function SpawnImpactStarburst(position: Vector3, colorA: Color3, colorB: C
 
     -- Partículas de chispas estelares (Comic Stars)
     local stars = Instance.new("ParticleEmitter")
+    stars.Texture = SPARKLE_TEXTURE
     stars.Rate = 0
     stars.Speed = NumberRange.new(15, 30)
     stars.Lifetime = NumberRange.new(0.2, 0.45)
     stars.SpreadAngle = Vector2.new(180, 180)
     stars.Color = ColorSequence.new(colorA, colorB)
-    stars.LightEmission = 0.8
+    stars.LightEmission = 0.9
     stars.Size = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 1.2),
         NumberSequenceKeypoint.new(0.4, 1.8),
@@ -81,6 +85,17 @@ local function SpawnImpactStarburst(position: Vector3, colorA: Color3, colorB: C
     })
     stars.Parent = attachment
     stars:Emit(18)
+
+    -- Destello de luz breve en el punto de impacto
+    local flash = Instance.new("PointLight")
+    flash.Color = colorA
+    flash.Brightness = 4
+    flash.Range = 14
+    flash.Parent = emitterPart
+
+    TweenService:Create(flash, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Brightness = 0,
+    }):Play()
 
     -- Anillo de choque luminoso en expansión
     local ring = Instance.new("Part")
@@ -99,9 +114,27 @@ local function SpawnImpactStarburst(position: Vector3, colorA: Color3, colorB: C
         Transparency = 1,
     }):Play()
 
+    -- Segundo anillo contra-rotatorio para dar volumen al impacto
+    local ring2 = Instance.new("Part")
+    ring2.Shape = Enum.PartType.Cylinder
+    ring2.Size = Vector3.new(0.12, 1.2, 1.2)
+    ring2.CFrame = ring.CFrame * CFrame.Angles(math.rad(90), 0, 0)
+    ring2.Material = Enum.Material.Neon
+    ring2.Color = colorB
+    ring2.Transparency = 0.25
+    ring2.Anchored = true
+    ring2.CanCollide = false
+    ring2.Parent = Workspace
+
+    TweenService:Create(ring2, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = Vector3.new(0.05, 6, 6),
+        Transparency = 1,
+    }):Play()
+
     task.delay(0.5, function()
         if emitterPart and emitterPart.Parent then emitterPart:Destroy() end
         if ring and ring.Parent then ring:Destroy() end
+        if ring2 and ring2.Parent then ring2:Destroy() end
     end)
 end
 
@@ -198,7 +231,7 @@ local function BuildProceduralWeapon(weaponDef: Types.WeaponDefinition, auraDef:
     -- Guarda ancha estilizada (Crossguard angular)
     local guard = Instance.new("Part")
     guard.Size = Vector3.new(2.6, 0.6, 1.1)
-    guard.Material = Enum.Material.SmoothPlastic
+    guard.Material = Enum.Material.Metal
     guard.Color = palette.DEEP_SLATE
     guard.CanCollide = false
     guard.Massless = true
@@ -291,32 +324,49 @@ local function BuildProceduralWeapon(weaponDef: Types.WeaponDefinition, auraDef:
     -- Partículas sutiles de estela en el filo
     local att = Instance.new("Attachment", blade)
     local particles = Instance.new("ParticleEmitter")
-    particles.Rate = 10
+    particles.Texture = SPARKLE_TEXTURE
+    particles.Rate = 14
     particles.Speed = NumberRange.new(1.5, 3)
     particles.Lifetime = NumberRange.new(0.2, 0.4)
     particles.Color = ColorSequence.new(weaponDef.AccentColor, auraDef.RarityColor)
-    particles.LightEmission = 0.4
+    particles.LightEmission = 0.6
     particles.Size = NumberSequence.new(0.45, 0)
     particles.Parent = att
 
-    -- Estela de tajo visible al blandir
-    local a0 = Instance.new("Attachment", blade)
-    a0.Position = Vector3.new(0, bladeLength / 2, 0)
-    local a1 = Instance.new("Attachment", blade)
-    a1.Position = Vector3.new(0, -bladeLength / 2, 0)
-    local trail = Instance.new("Trail")
-    trail.Name = "SlashTrail"
-    trail.Attachment0 = a0
-    trail.Attachment1 = a1
-    trail.Lifetime = 0.18
-    trail.LightEmission = 0.8
-    trail.Color = ColorSequence.new(weaponDef.AccentColor, auraDef.RarityColor)
-    trail.Transparency = NumberSequence.new(0.2, 1)
-    trail.FaceCamera = true
-    trail.Parent = blade
+    -- Estela de tajo (Trail) que dibuja un arco luminoso al blandir
+    local trailTop = Instance.new("Attachment")
+    trailTop.Name = "BladeTrail_Top"
+    trailTop.Position = Vector3.new(0, bladeLength / 2, 0)
+    trailTop.Parent = blade
 
-    -- La animación y el sonido del golpe se manejan en el cliente (ClientInit),
-    -- porque LocalScript.Source no se puede escribir en tiempo de ejecución.
+    local trailBottom = Instance.new("Attachment")
+    trailBottom.Name = "BladeTrail_Bottom"
+    trailBottom.Position = Vector3.new(0, -bladeLength / 2, 0)
+    trailBottom.Parent = blade
+
+    local bladeTrail = Instance.new("Trail")
+    bladeTrail.Name = "BladeTrail"
+    bladeTrail.Attachment0 = trailTop
+    bladeTrail.Attachment1 = trailBottom
+    bladeTrail.Color = ColorSequence.new(weaponDef.AccentColor, auraDef.RarityColor)
+    bladeTrail.Lifetime = 0.28
+    bladeTrail.LightEmission = 0.9
+    bladeTrail.LightInfluence = 0
+    bladeTrail.Texture = SPARKLE_TEXTURE
+    bladeTrail.TextureLength = 1.2
+    bladeTrail.TextureMode = Enum.TextureMode.Stretch
+    bladeTrail.WidthScale = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    bladeTrail.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.15),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    bladeTrail.FaceCamera = true
+    bladeTrail.Parent = blade
+
+    -- La animación y el sonido del golpe se manejan fluidamente en el cliente (ClientInit).
     return tool
 end
 
@@ -374,6 +424,10 @@ function CombatService.ProcessPlayerAttack(player: Player)
         baseDamage = math.floor(baseDamage * 2.0)
     end
 
+    -- Golpe crítico: probabilidad de daño aumentado para dar profundidad al combate
+    local isCrit = math.random() < 0.15
+    local hitDamage = isCrit and math.floor(baseDamage * 1.6) or baseDamage
+
     -- Efecto de tajo visual frontal (se produce en cualquier zona donde blandas el arma)
     SpawnSlashWave(root.CFrame, weaponDef.AccentColor)
 
@@ -384,8 +438,9 @@ function CombatService.ProcessPlayerAttack(player: Player)
     local hitMobs = MobService.GetMobsInRange(attackCFrame.Position, weaponDef.Range + 5)
     for _, mob in ipairs(hitMobs) do
         local mobPos = mob.PrimaryPart and mob.PrimaryPart.Position or attackCFrame.Position
-        MobService.DamageMob(mob, baseDamage, player)
+        MobService.DamageMob(mob, hitDamage, player)
         SpawnImpactStarburst(mobPos, weaponDef.AccentColor, auraDef.RarityColor)
+        SpawnFloatingDamageNumber(mobPos + Vector3.new(0, 3, 0), hitDamage, isCrit, weaponDef.AccentColor)
     end
 
     -- 2. DETECCIÓN DE IMPACTO EN COFRES Y CAJAS
@@ -437,9 +492,9 @@ function CombatService.ProcessPlayerAttack(player: Player)
                     if IslandService.IsInPvPZone(otherRoot.Position) then
                         local distance = (otherRoot.Position - attackCFrame.Position).Magnitude
                         if distance <= weaponDef.Range then
-                            otherHumanoid:TakeDamage(baseDamage)
+                            otherHumanoid:TakeDamage(hitDamage)
                             SpawnImpactStarburst(otherRoot.Position, weaponDef.AccentColor, auraDef.RarityColor)
-                            SpawnFloatingDamageNumber(otherRoot.Position + Vector3.new(0, 3, 0), baseDamage, false, weaponDef.AccentColor)
+                            SpawnFloatingDamageNumber(otherRoot.Position + Vector3.new(0, 3, 0), hitDamage, isCrit, weaponDef.AccentColor)
 
                             local knockback = (otherRoot.Position - root.Position).Unit
                             otherRoot.AssemblyLinearVelocity = (knockback * 65) + Vector3.new(0, 25, 0)
@@ -865,7 +920,7 @@ function CombatService.PlaceBridgeBlock(player: Player, targetPos: Vector3)
     block.Name = "PlacedBridgeBlock"
     block.Size = Vector3.new(4, 1.4, 4)
     block.Position = targetPos
-    block.Material = Enum.Material.SmoothPlastic
+    block.Material = Enum.Material.Metal
     block.Color = Color3.fromRGB(36, 44, 62)
     block.Anchored = true
     block.CanCollide = true
