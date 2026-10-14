@@ -24,19 +24,31 @@ function ReactorController.SpawnFloatingText(startPos: Vector2, text: string, co
     label.TextColor3 = color
     label.Font = Enum.Font.FredokaOne
     label.TextScaled = true
-    label.Size = UDim2.fromOffset(120, 40)
+    label.Size = UDim2.fromOffset(140, 46)
     -- Dispersión aleatoria alrededor del punto de clic
     local offsetX = math.random(-40, 40)
-    label.Position = UDim2.fromOffset(startPos.X + offsetX - 60, startPos.Y - 20)
+    label.Position = UDim2.fromOffset(startPos.X + offsetX - 70, startPos.Y - 23)
     label.BackgroundTransparency = 1
     label.ZIndex = 20
 
     local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 2
+    stroke.Thickness = 2.5
     stroke.Color = Color3.new(0, 0, 0)
     stroke.Parent = label
 
+    -- Pop de escala al aparecer (más jugoso que un simple fade)
+    local pop = Instance.new("UIScale")
+    pop.Scale = 0.4
+    pop.Parent = label
+
     label.Parent = screenGui
+
+    TweenService:Create(pop, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.12 }):Play()
+    task.delay(0.12, function()
+        if pop and pop.Parent then
+            TweenService:Create(pop, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+        end
+    end)
 
     -- Animación de ascenso y desvanecimiento
     local targetPos = UDim2.fromOffset(label.Position.X.Offset, label.Position.Y.Offset - 90)
@@ -58,20 +70,32 @@ function ReactorController.SpawnFloatingText(startPos: Vector2, text: string, co
     end)
 end
 
--- Ejecuta la acción de clic con animación "Squash & Stretch"
+-- Ejecuta la acción de clic con animación "Squash & Stretch" enriquecida
 function ReactorController.HandleCoreClick(coreButton: GuiButton, lastPower: number)
-    -- 1. Squash & Stretch Tween
+    -- 1. Squash & Stretch Tween con un pequeño giro aleatorio
+    local spin = (math.random() > 0.5) and 5 or -5
     local clickDown = TweenService:Create(coreButton, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.fromScale(0.88, 0.88)
+        Size = UDim2.fromScale(0.86, 0.86),
+        Rotation = spin,
     })
-    local bounceBack = TweenService:Create(coreButton, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.fromScale(1.0, 1.0)
+    local bounceBack = TweenService:Create(coreButton, TweenInfo.new(0.3, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
+        Size = UDim2.fromScale(1.0, 1.0),
+        Rotation = 0,
     })
 
     clickDown:Play()
     clickDown.Completed:Once(function()
         bounceBack:Play()
     end)
+
+    -- 1b. Pulso del anillo de neón para reforzar el impacto
+    local stroke = coreButton:FindFirstChild("UIStroke") :: UIStroke?
+    if stroke then
+        stroke.Thickness = 8
+        TweenService:Create(stroke, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Thickness = 5,
+        }):Play()
+    end
 
     -- 2. Efecto de texto flotante
     local absPos = coreButton.AbsolutePosition
