@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("OverchargedShared")
 local Types = require(Shared.Types.GameTypes)
@@ -13,6 +14,7 @@ local FormatNumber = require(Shared.Utils.FormatNumber)
 local SoundUtil = require(Shared.Utils.SoundUtil)
 
 local ReactorController = require(script.Parent.ReactorController)
+local CameraController = require(script.Parent.CameraController)
 
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -29,13 +31,32 @@ local ZoneBadge: TextLabel
 local ReactorModal: Frame
 local CoreButton: TextButton
 local OverchargeFill: Frame
+local OverchargeBarBg: Frame
 local OverchargeLabel: TextLabel
+local OverchargeReadyStroke: UIStroke
+local OverchargeShine: Frame
 
 local ShopModal: Frame
 local UpgradesContainer: ScrollingFrame
 
 local NotificationBanner: TextLabel
 local CachedProfile: Types.PlayerProfile? = nil
+
+-- Estado de la animación de sobrecarga
+local FXOverlay: Frame
+local CoreGlowStroke: UIStroke
+local CoreGlowPulse: Frame
+local CoreOrbit: Frame
+local CoreSpinLevel = 1
+local CoreElectrons: { {
+    Frame: Frame,
+    RadiusX: number,
+    RadiusY: number,
+    Rotation: number,
+    Speed: number,
+    Phase: number,
+} } = {}
+local LastOverchargeRatio = 0
 
 -- Estado de Number Lerp de Energía
 local DisplayedEnergy = 0
@@ -140,6 +161,159 @@ local function AnimateModalToggle(modal: Frame, open: boolean)
     end
 end
 
+-- Centro en pantalla del núcleo (o del viewport si el modal está cerrado)
+local function GetCoreCenter(): Vector2
+    if ReactorModal and ReactorModal.Visible and CoreButton then
+        local pos = CoreButton.AbsolutePosition
+        local size = CoreButton.AbsoluteSize
+        if size.X > 0 and size.Y > 0 then
+            return Vector2.new(pos.X + size.X / 2, pos.Y + size.Y / 2)
+        end
+    end
+    local camera = Workspace.CurrentCamera
+    if camera then
+        local vp = camera.ViewportSize
+        return Vector2.new(vp.X / 2, vp.Y / 2)
+    end
+    return Vector2.new(400, 300)
+end
+
+-- Destello de pantalla completa (flash de sobrecarga)
+local function PlayScreenFlash(color: Color3)
+    if not FXOverlay then return end
+
+    local flash = Instance.new("Frame")
+    flash.Name = "BurstFlash"
+    flash.Size = UDim2.fromScale(1, 1)
+    flash.BackgroundColor3 = color
+    flash.BackgroundTransparency = 0.55
+    flash.BorderSizePixel = 0
+    flash.Active = false
+    flash.ZIndex = 2
+    flash.Parent = FXOverlay
+
+    TweenService:Create(flash, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 1,
+    }):Play()
+
+    task.delay(0.55, function()
+        if flash and flash.Parent then flash:Destroy() end
+    end)
+end
+
+-- Onda expansiva circular desde un punto de pantalla
+local function SpawnShockwaveRing(center: Vector2, color: Color3, startDiameter: number, endDiameter: number, duration: number?)
+    if not FXOverlay then return end
+
+    local ring = Instance.new("Frame")
+    ring.Name = "BurstRing"
+    ring.AnchorPoint = Vector2.new(0.5, 0.5)
+    ring.Position = UDim2.fromOffset(math.floor(center.X), math.floor(center.Y))
+    ring.Size = UDim2.fromOffset(startDiameter, startDiameter)
+    ring.BackgroundTransparency = 1
+    ring.BorderSizePixel = 0
+    ring.Active = false
+    ring.ZIndex = 1
+    ring.Parent = FXOverlay
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.5, 0)
+    corner.Parent = ring
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 6
+    stroke.Color = color
+    stroke.Transparency = 0.1
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = ring
+
+    local d = duration or 0.65
+    TweenService:Create(ring, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Size = UDim2.fromOffset(endDiameter, endDiameter),
+    }):Play()
+    TweenService:Create(stroke, TweenInfo.new(d, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Transparency = 1,
+        Thickness = 1,
+    }):Play()
+
+    task.delay(d + 0.05, function()
+        if ring and ring.Parent then ring:Destroy() end
+    end)
+end
+
+-- Explosión de partículas de "champaña" (pop de dopamina)
+local function SpawnParticleBurst(center: Vector2, colorA: Color3, colorB: Color3, count: number)
+    if not FXOverlay then return end
+
+    for i = 1, count do
+        local dot = Instance.new("Frame")
+        dot.Name = "BurstParticle"
+        dot.AnchorPoint = Vector2.new(0.5, 0.5)
+        dot.Position = UDim2.fromOffset(math.floor(center.X), math.floor(center.Y))
+        local size = math.random(8, 16)
+        dot.Size = UDim2.fromOffset(size, size)
+        dot.BackgroundColor3 = (i % 2 == 0) and colorA or colorB
+        dot.BorderSizePixel = 0
+        dot.Active = false
+        dot.ZIndex = 3
+        dot.Parent = FXOverlay
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = dot
+
+        local angle = (i / count) * math.pi * 2 + math.random() * 0.5
+        local dist = math.random(140, 360)
+        local targetX = center.X + math.cos(angle) * dist
+        local targetY = center.Y + math.sin(angle) * dist
+        local dur = 0.6 + math.random() * 0.25
+
+        TweenService:Create(dot, TweenInfo.new(dur, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = UDim2.fromOffset(math.floor(targetX), math.floor(targetY)),
+            BackgroundTransparency = 1,
+            Size = UDim2.fromOffset(2, 2),
+        }):Play()
+
+        task.delay(dur + 0.05, function()
+            if dot and dot.Parent then dot:Destroy() end
+        end)
+    end
+end
+
+-- Esquinas decorativas estilo HUD premium
+local function AddCornerAccents(parent: GuiObject, color: Color3, length: number, thickness: number)
+    local corners = {
+        { ax = 0, ay = 0, px = 0, py = 0 },
+        { ax = 1, ay = 0, px = 1, py = 0 },
+        { ax = 0, ay = 1, px = 0, py = 1 },
+        { ax = 1, ay = 1, px = 1, py = 1 },
+    }
+
+    for _, c in ipairs(corners) do
+        local h = Instance.new("Frame")
+        h.Name = "CornerAccentH"
+        h.BackgroundColor3 = color
+        h.BackgroundTransparency = 0.15
+        h.BorderSizePixel = 0
+        h.Size = UDim2.fromOffset(length, thickness)
+        h.AnchorPoint = Vector2.new(c.ax, c.ay)
+        h.Position = UDim2.new(c.px, 0, c.py, 0)
+        h.ZIndex = 4
+        h.Parent = parent
+
+        local v = Instance.new("Frame")
+        v.Name = "CornerAccentV"
+        v.BackgroundColor3 = color
+        v.BackgroundTransparency = 0.15
+        v.BorderSizePixel = 0
+        v.Size = UDim2.fromOffset(thickness, length)
+        v.AnchorPoint = Vector2.new(c.ax, c.ay)
+        v.Position = UDim2.new(c.px, 0, c.py, 0)
+        v.ZIndex = 4
+        v.Parent = parent
+    end
+end
+
 -- Crea un botón de cierre estándar [X] estilizado
 local function CreateCloseButton(parent: Frame, onClose: () -> ()): TextButton
     local closeBtn = Instance.new("TextButton")
@@ -200,6 +374,15 @@ function UIController.InitializeUI()
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.Parent = playerGui
+
+    -- Capa de efectos (destellos, ondas y partículas de sobrecarga)
+    FXOverlay = Instance.new("Frame")
+    FXOverlay.Name = "FXOverlay"
+    FXOverlay.Size = UDim2.fromScale(1, 1)
+    FXOverlay.BackgroundTransparency = 1
+    FXOverlay.Active = false
+    FXOverlay.ZIndex = 200
+    FXOverlay.Parent = ScreenGui
 
     local palette = GameConfig.PALETTE
 
@@ -446,6 +629,7 @@ function UIController.InitializeUI()
     CreateCorner(ReactorModal, 16)
     CreateStroke(ReactorModal, 2.5, palette.ELECTRIC_COBALT)
     AddModernGradient(ReactorModal)
+    AddCornerAccents(ReactorModal, palette.CYAN_PLASMA, 20, 3)
     CreateCloseButton(ReactorModal, function()
         ReactorModal.Visible = false
     end)
@@ -461,43 +645,210 @@ function UIController.InitializeUI()
     reactorTitle.TextSize = 16
     reactorTitle.Parent = ReactorModal
 
-    -- Botón interactivo central del reactor (Electric Cobalt con Squash & Stretch)
+    local reactorDivider = Instance.new("Frame")
+    reactorDivider.Name = "ReactorDivider"
+    reactorDivider.Size = UDim2.new(1, -30, 0, 2)
+    reactorDivider.Position = UDim2.new(0, 15, 0, 45)
+    reactorDivider.BackgroundColor3 = palette.CYAN_PLASMA
+    reactorDivider.BackgroundTransparency = 0.35
+    reactorDivider.BorderSizePixel = 0
+    reactorDivider.ZIndex = 3
+    reactorDivider.Parent = ReactorModal
+
+    -- ═══ LOGO DEL REACTOR: Emblema atómico procedural (discos, anillos orbitales y electrones) ═══
     local coreCenterWrapper = Instance.new("Frame")
-    coreCenterWrapper.Size = UDim2.fromOffset(170, 170)
-    coreCenterWrapper.Position = UDim2.new(0.5, -85, 0, 60)
+    coreCenterWrapper.Name = "CoreCenterWrapper"
+    coreCenterWrapper.Size = UDim2.fromOffset(180, 180)
+    coreCenterWrapper.Position = UDim2.new(0.5, -90, 0, 58)
     coreCenterWrapper.BackgroundTransparency = 1
     coreCenterWrapper.Parent = ReactorModal
 
+    -- Halo de resplandor detrás del núcleo (late al acercarse al 100%)
+    CoreGlowPulse = Instance.new("Frame")
+    CoreGlowPulse.Name = "CoreGlowPulse"
+    CoreGlowPulse.AnchorPoint = Vector2.new(0.5, 0.5)
+    CoreGlowPulse.Position = UDim2.fromScale(0.5, 0.5)
+    CoreGlowPulse.Size = UDim2.fromScale(1.15, 1.15)
+    CoreGlowPulse.BackgroundColor3 = palette.CYAN_PLASMA
+    CoreGlowPulse.BackgroundTransparency = 0.9
+    CoreGlowPulse.BorderSizePixel = 0
+    CoreGlowPulse.ZIndex = 0
+    CoreGlowPulse.Parent = coreCenterWrapper
+    CreateCorner(CoreGlowPulse, 1000)
+
     CoreButton = Instance.new("TextButton")
     CoreButton.Name = "ReactorCore"
+    CoreButton.AnchorPoint = Vector2.new(0.5, 0.5)
+    CoreButton.Position = UDim2.fromScale(0.5, 0.5)
     CoreButton.Size = UDim2.fromScale(1, 1)
     CoreButton.BackgroundColor3 = palette.ELECTRIC_COBALT
-    CoreButton.Text = "⚛"
-    CoreButton.Font = Enum.Font.FredokaOne
-    CoreButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CoreButton.TextSize = 85
+    CoreButton.BackgroundTransparency = 0.06
+    CoreButton.Text = ""
     CoreButton.AutoButtonColor = false
+    CoreButton.ZIndex = 2
     CoreButton.Parent = coreCenterWrapper
-    CreateCorner(CoreButton, 85)
-    CreateStroke(CoreButton, 5, palette.CYAN_PLASMA)
+    CreateCorner(CoreButton, 1000)
 
-    -- Barra de Sobrecarga dentro del modal
-    local overchargeBarBg = Instance.new("Frame")
-    overchargeBarBg.Name = "OverchargeBarBg"
-    overchargeBarBg.Size = UDim2.new(1, -40, 0, 28)
-    overchargeBarBg.Position = UDim2.new(0, 20, 0, 250)
-    overchargeBarBg.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
-    overchargeBarBg.Parent = ReactorModal
-    CreateCorner(overchargeBarBg, 14)
-    CreateStroke(overchargeBarBg, 1.5, palette.ELECTRIC_COBALT)
+    local coreGrad = Instance.new("UIGradient")
+    coreGrad.Color = ColorSequence.new(Color3.fromRGB(40, 90, 220), Color3.fromRGB(10, 20, 45))
+    coreGrad.Rotation = 90
+    coreGrad.Parent = CoreButton
+
+    CoreGlowStroke = CreateStroke(CoreButton, 5, palette.CYAN_PLASMA)
+
+    -- Disco interno pulsante (núcleo de energía)
+    local innerDisc = Instance.new("Frame")
+    innerDisc.Name = "InnerDisc"
+    innerDisc.AnchorPoint = Vector2.new(0.5, 0.5)
+    innerDisc.Position = UDim2.fromScale(0.5, 0.5)
+    innerDisc.Size = UDim2.fromScale(0.58, 0.58)
+    innerDisc.BackgroundColor3 = palette.CYAN_PLASMA
+    innerDisc.BackgroundTransparency = 0.55
+    innerDisc.BorderSizePixel = 0
+    innerDisc.ZIndex = 1
+    innerDisc.Parent = CoreButton
+    CreateCorner(innerDisc, 1000)
+
+    -- Contenedor de anillos orbitales y electrones
+    CoreOrbit = Instance.new("Frame")
+    CoreOrbit.Name = "CoreOrbit"
+    CoreOrbit.Size = UDim2.fromScale(1, 1)
+    CoreOrbit.BackgroundTransparency = 1
+    CoreOrbit.ZIndex = 3
+    CoreOrbit.Parent = CoreButton
+
+    local orbitDefs = {
+        { rx = 0.44, ry = 0.18, rot = 0 },
+        { rx = 0.44, ry = 0.18, rot = 60 },
+        { rx = 0.44, ry = 0.18, rot = 120 },
+    }
+
+    for idx, def in ipairs(orbitDefs) do
+        local ring = Instance.new("Frame")
+        ring.Name = "OrbitRing_" .. tostring(idx)
+        ring.AnchorPoint = Vector2.new(0.5, 0.5)
+        ring.Position = UDim2.fromScale(0.5, 0.5)
+        ring.Size = UDim2.fromScale(def.rx * 2, def.ry * 2)
+        ring.BackgroundTransparency = 1
+        ring.Rotation = def.rot
+        ring.ZIndex = 3
+        ring.Parent = CoreOrbit
+        CreateCorner(ring, 1000)
+
+        local ringStroke = Instance.new("UIStroke")
+        ringStroke.Thickness = 2
+        ringStroke.Color = palette.CYAN_PLASMA
+        ringStroke.Transparency = 0.35
+        ringStroke.Parent = ring
+    end
+
+    -- Electrones orbitales animados
+    CoreElectrons = {}
+    for idx, def in ipairs(orbitDefs) do
+        local electron = Instance.new("Frame")
+        electron.Name = "Electron_" .. tostring(idx)
+        electron.AnchorPoint = Vector2.new(0.5, 0.5)
+        electron.Position = UDim2.fromScale(0.5, 0.5)
+        electron.Size = UDim2.fromOffset(11, 11)
+        electron.BackgroundColor3 = palette.ENERGY_GOLD
+        electron.BorderSizePixel = 0
+        electron.ZIndex = 5
+        electron.Parent = CoreOrbit
+        CreateCorner(electron, 1000)
+
+        local eStroke = Instance.new("UIStroke")
+        eStroke.Thickness = 2
+        eStroke.Color = Color3.fromRGB(255, 255, 255)
+        eStroke.Transparency = 0.2
+        eStroke.Parent = electron
+
+        table.insert(CoreElectrons, {
+            Frame = electron,
+            RadiusX = def.rx,
+            RadiusY = def.ry,
+            Rotation = math.rad(def.rot),
+            Speed = 0.9 + idx * 0.12,
+            Phase = idx * 2.0,
+        })
+    end
+
+    -- Símbolo central del átomo (logo reconocible)
+    local coreSymbol = Instance.new("TextLabel")
+    coreSymbol.Name = "CoreSymbol"
+    coreSymbol.AnchorPoint = Vector2.new(0.5, 0.5)
+    coreSymbol.Position = UDim2.fromScale(0.5, 0.5)
+    coreSymbol.Size = UDim2.fromScale(1, 1)
+    coreSymbol.BackgroundTransparency = 1
+    coreSymbol.Font = Enum.Font.FredokaOne
+    coreSymbol.Text = "⚛"
+    coreSymbol.TextColor3 = Color3.fromRGB(255, 255, 255)
+    coreSymbol.TextSize = 62
+    coreSymbol.ZIndex = 2
+    coreSymbol.Parent = CoreButton
+
+    local symbolStroke = Instance.new("UIStroke")
+    symbolStroke.Thickness = 2.5
+    symbolStroke.Color = Color3.fromRGB(0, 0, 0)
+    symbolStroke.Transparency = 0.35
+    symbolStroke.Parent = coreSymbol
+
+    -- Barra de Sobrecarga dentro del modal (marcas, brillo deslizante y alerta de "listo")
+    OverchargeBarBg = Instance.new("Frame")
+    OverchargeBarBg.Name = "OverchargeBarBg"
+    OverchargeBarBg.Size = UDim2.new(1, -40, 0, 28)
+    OverchargeBarBg.Position = UDim2.new(0, 20, 0, 250)
+    OverchargeBarBg.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
+    OverchargeBarBg.Parent = ReactorModal
+    CreateCorner(OverchargeBarBg, 14)
+    OverchargeReadyStroke = CreateStroke(OverchargeBarBg, 2, palette.ELECTRIC_COBALT)
+    OverchargeReadyStroke.Transparency = 0.5
 
     OverchargeFill = Instance.new("Frame")
     OverchargeFill.Name = "Fill"
     OverchargeFill.Size = UDim2.fromScale(0, 1)
     OverchargeFill.BackgroundColor3 = palette.ENERGY_GOLD
     OverchargeFill.BorderSizePixel = 0
-    OverchargeFill.Parent = overchargeBarBg
+    OverchargeFill.ClipsDescendants = true
+    OverchargeFill.Parent = OverchargeBarBg
     CreateCorner(OverchargeFill, 14)
+
+    local fillGrad = Instance.new("UIGradient")
+    fillGrad.Color = ColorSequence.new(Color3.fromRGB(255, 240, 150), palette.ENERGY_GOLD)
+    fillGrad.Rotation = 90
+    fillGrad.Parent = OverchargeFill
+
+    -- Brillo que recorre la barra
+    OverchargeShine = Instance.new("Frame")
+    OverchargeShine.Name = "Shine"
+    OverchargeShine.Size = UDim2.fromScale(0.18, 1)
+    OverchargeShine.Position = UDim2.fromScale(-0.3, 0)
+    OverchargeShine.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    OverchargeShine.BackgroundTransparency = 0.4
+    OverchargeShine.BorderSizePixel = 0
+    OverchargeShine.ZIndex = 2
+    OverchargeShine.Parent = OverchargeFill
+
+    local shineGrad = Instance.new("UIGradient")
+    shineGrad.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.5, 0),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    shineGrad.Rotation = 0
+    shineGrad.Parent = OverchargeShine
+
+    -- Marcas de progreso cada 10%
+    for i = 1, 9 do
+        local tick = Instance.new("Frame")
+        tick.Name = "Tick_" .. tostring(i)
+        tick.Size = UDim2.new(0, 1, 0.5, 0)
+        tick.Position = UDim2.fromScale(i / 10, 0.25)
+        tick.BackgroundColor3 = Color3.fromRGB(90, 110, 150)
+        tick.BackgroundTransparency = 0.4
+        tick.BorderSizePixel = 0
+        tick.ZIndex = 4
+        tick.Parent = OverchargeBarBg
+    end
 
     OverchargeLabel = Instance.new("TextLabel")
     OverchargeLabel.Name = "ProgressLabel"
@@ -508,7 +859,7 @@ function UIController.InitializeUI()
     OverchargeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     OverchargeLabel.TextSize = 14
     OverchargeLabel.ZIndex = 5
-    OverchargeLabel.Parent = overchargeBarBg
+    OverchargeLabel.Parent = OverchargeBarBg
 
     local hintLabel = Instance.new("TextLabel")
     hintLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -606,13 +957,61 @@ function UIController.InitializeUI()
         end
     end)
 
-    -- Conexión de clic del núcleo con animación Squash & Stretch
+    -- Conexión de clic del núcleo con animación Squash & Stretch + feedback extra
     CoreButton.MouseButton1Down:Connect(function()
         local clickPower = 1
         if CachedProfile and CachedProfile.Upgrades["Turbine"] then
             clickPower = math.max(1, CachedProfile.Upgrades["Turbine"].Level)
         end
         ReactorController.HandleCoreClick(CoreButton, clickPower)
+
+        -- Sonido y pequeña onda en cada clic para reforzar la respuesta táctil
+        SoundUtil.Play2D(SoundUtil.SOUNDS.CLICK, 0.45, true)
+        SpawnShockwaveRing(GetCoreCenter(), palette.CYAN_PLASMA, 20, 190, 0.35)
+    end)
+
+    -- Animación continua de electrones orbitales (con aceleración al sobrecargar)
+    task.spawn(function()
+        local t = 0
+        while true do
+            task.wait(0.03)
+            t += 0.03
+
+            for _, e in ipairs(CoreElectrons) do
+                local f = e.Frame
+                if f and f.Parent then
+                    local ang = t * e.Speed * CoreSpinLevel + e.Phase
+                    local x = e.RadiusX * math.cos(ang)
+                    local y = e.RadiusY * math.sin(ang)
+                    local cosR = math.cos(e.Rotation)
+                    local sinR = math.sin(e.Rotation)
+                    local rx = x * cosR - y * sinR
+                    local ry = x * sinR + y * cosR
+                    f.Position = UDim2.fromScale(0.5 + rx, 0.5 + ry)
+                end
+            end
+
+            -- Decaimiento suave del impulso de giro tras una sobrecarga
+            if CoreSpinLevel > 1 then
+                CoreSpinLevel += (1 - CoreSpinLevel) * 0.06
+                if CoreSpinLevel < 1.02 then
+                    CoreSpinLevel = 1
+                end
+            end
+        end
+    end)
+
+    -- Brillo deslizante sobre la barra de sobrecarga
+    task.spawn(function()
+        while true do
+            if OverchargeShine and OverchargeShine.Parent then
+                OverchargeShine.Position = UDim2.fromScale(-0.3, 0)
+                TweenService:Create(OverchargeShine, TweenInfo.new(0.85, Enum.EasingStyle.Linear), {
+                    Position = UDim2.fromScale(1.1, 0),
+                }):Play()
+            end
+            task.wait(1.5)
+        end
     end)
 
     -- Rastreador en tiempo real de posición del jugador (Safezone vs Arena)
@@ -668,6 +1067,90 @@ function UIController.ShowNotification(text: string, color: Color3)
         })
         fadeOut:Play()
     end)
+end
+
+-- Celebración de sobrecarga completada: el pico de dopamina del jugador
+function UIController.PlayOverchargeBurst()
+    local palette = GameConfig.PALETTE
+    local gold = palette.ENERGY_GOLD
+    local cyan = palette.CYAN_PLASMA
+    local center = GetCoreCenter()
+
+    -- Capa de sonido: impacto pesado + confirmación brillante
+    SoundUtil.Play2D(SoundUtil.SOUNDS.AURA_ACTIVATE, 1, false)
+    task.delay(0.05, function()
+        SoundUtil.Play2D(SoundUtil.SOUNDS.LEVEL_UP, 0.7, false)
+    end)
+
+    -- Destello de pantalla y ondas expansivas
+    PlayScreenFlash(cyan)
+    SpawnShockwaveRing(center, gold, 30, 1100, 0.7)
+    SpawnShockwaveRing(center, cyan, 10, 750, 0.55)
+    SpawnParticleBurst(center, gold, cyan, 30)
+
+    -- Texto flotante celebratorio
+    ReactorController.SpawnFloatingText(center, "¡SOBRECARGA!", gold)
+    ReactorController.SpawnFloatingText(Vector2.new(center.X, center.Y + 28), "¡AURA DESBLOQUEADA!", cyan)
+
+    -- Salto elástico y giro acelerado del logo
+    CoreSpinLevel = 9
+    if CoreButton then
+        local scale = CoreButton:FindFirstChildOfClass("UIScale")
+        if not scale then
+            scale = Instance.new("UIScale")
+            scale.Parent = CoreButton
+        end
+        scale.Scale = 1
+        TweenService:Create(scale, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.32 }):Play()
+        task.delay(0.13, function()
+            if scale and scale.Parent then
+                TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+            end
+        end)
+    end
+
+    -- El anillo exterior destella y el halo pulsa
+    if CoreGlowStroke then
+        CoreGlowStroke.Thickness = 10
+        CoreGlowStroke.Transparency = 0
+        TweenService:Create(CoreGlowStroke, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Thickness = 5,
+        }):Play()
+    end
+
+    if CoreGlowPulse then
+        CoreGlowPulse.BackgroundTransparency = 0.3
+        TweenService:Create(CoreGlowPulse, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundTransparency = 0.9,
+        }):Play()
+    end
+
+    -- La barra destella a blanco y da una palmada
+    if OverchargeFill then
+        OverchargeFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TweenService:Create(OverchargeFill, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = gold,
+        }):Play()
+    end
+
+    if OverchargeBarBg then
+        local barScale = OverchargeBarBg:FindFirstChildOfClass("UIScale")
+        if not barScale then
+            barScale = Instance.new("UIScale")
+            barScale.Parent = OverchargeBarBg
+        end
+        barScale.Scale = 1
+        TweenService:Create(barScale, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.12 }):Play()
+        task.delay(0.12, function()
+            if barScale and barScale.Parent then
+                TweenService:Create(barScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+            end
+        end)
+    end
+
+    -- Sacudida de cámara + micro-parón para vender el impacto
+    CameraController.Shake(1.4, 0.45, 30)
+    CameraController.ApplyHitstop()
 end
 
 -- Renderiza la lista de mejoras en la tienda
@@ -906,11 +1389,31 @@ function UIController.UpdateFromProfile(profile: Types.PlayerProfile)
 
     -- 3. Actualizar Barra de Sobrecarga
     local progressRatio = math.clamp(profile.OverchargeMeter / profile.MaxOvercharge, 0, 1)
+
+    -- Detección de sobrecarga completada: la barra cae de casi llena a 0 al hacer roll
+    if LastOverchargeRatio >= 0.75 and progressRatio < (LastOverchargeRatio - 0.3) then
+        UIController.PlayOverchargeBurst()
+    end
+    LastOverchargeRatio = progressRatio
+
     TweenService:Create(OverchargeFill, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = UDim2.fromScale(progressRatio, 1)
     }):Play()
 
     OverchargeLabel.Text = string.format("SOBRECARGA: %.0f%%", progressRatio * 100)
+
+    -- Anticipación: la barra se enciende y el núcleo late al acercarse al 100%
+    local hot = progressRatio >= 0.8
+    if OverchargeReadyStroke then
+        OverchargeReadyStroke.Transparency = hot and 0 or 0.5
+        OverchargeReadyStroke.Color = hot and GameConfig.PALETTE.ENERGY_GOLD or GameConfig.PALETTE.ELECTRIC_COBALT
+    end
+    if CoreGlowPulse then
+        local glowScale = hot and 1.22 or 1.15
+        TweenService:Create(CoreGlowPulse, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.fromScale(glowScale, glowScale),
+        }):Play()
+    end
 
     -- 4. Actualizar lista de mejoras
     RenderUpgrades(profile)
