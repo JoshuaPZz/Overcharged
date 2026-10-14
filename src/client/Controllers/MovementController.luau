@@ -87,7 +87,12 @@ function MovementController.SetSprinting(active: boolean)
     local char = localPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then
-        hum.WalkSpeed = active and SprintWalkSpeed or BaseWalkSpeed
+        local currentBase = hum:GetAttribute("BaseWalkSpeed")
+        if typeof(currentBase) ~= "number" then
+            hum:SetAttribute("BaseWalkSpeed", hum.WalkSpeed)
+            currentBase = hum.WalkSpeed
+        end
+        hum.WalkSpeed = active and (currentBase + 10) or currentBase
     end
 
     if active then
