@@ -20,57 +20,58 @@ local function SetupLighting()
         Lighting.Technology = Enum.Technology.Future
     end)
 
-    Lighting.ClockTime = 17.2 -- Atardecer épico dorado
+    Lighting.ClockTime = 16.5 -- Luz dorada épica de media tarde estilo anime
     Lighting.GeographicLatitude = 38
-    Lighting.Brightness = 2.5
+    Lighting.Brightness = 2.6
     Lighting.GlobalShadows = true
     Lighting.ShadowSoftness = 0.15
     Lighting.ExposureCompensation = 0.05
-    Lighting.Ambient = Color3.fromRGB(45, 50, 75)
-    Lighting.OutdoorAmbient = Color3.fromRGB(90, 100, 140)
+    Lighting.Ambient = Color3.fromRGB(40, 45, 70)
+    Lighting.OutdoorAmbient = Color3.fromRGB(85, 95, 135)
     Lighting.EnvironmentDiffuseScale = 1.0
     Lighting.EnvironmentSpecularScale = 1.0
 
-    -- 1. Bloom Effect
+    -- 1. Bloom Effect (Sutil y vibrante para que los neones y auras brillen)
     local bloom = Lighting:FindFirstChild("GameBloom") or Instance.new("BloomEffect")
     bloom.Name = "GameBloom"
-    bloom.Intensity = 0.95
-    bloom.Size = 26
-    bloom.Threshold = 1.6
+    bloom.Intensity = 0.85
+    bloom.Size = 24
+    bloom.Threshold = 1.75
     bloom.Parent = Lighting
 
-    -- 2. Color Correction
+    -- 2. Color Correction (Contraste y saturación anime equilibrados)
     local colorCorrection = Lighting:FindFirstChild("GameColorCorrection") or Instance.new("ColorCorrectionEffect")
     colorCorrection.Name = "GameColorCorrection"
-    colorCorrection.Contrast = 0.16
-    colorCorrection.Saturation = 0.26
-    colorCorrection.TintColor = Color3.fromRGB(250, 248, 255)
+    colorCorrection.Contrast = 0.14
+    colorCorrection.Saturation = 0.22
+    colorCorrection.Brightness = 0.02
+    colorCorrection.TintColor = Color3.fromRGB(252, 248, 255)
     colorCorrection.Parent = Lighting
 
-    -- 3. Atmosphere (Profundidad de vacío flotante de Skywars)
+    -- 3. Atmosphere (Neblina de distancia y horizonte cálido estilo anime)
     local atmosphere = Lighting:FindFirstChild("GameAtmosphere") or Instance.new("Atmosphere")
     atmosphere.Name = "GameAtmosphere"
-    atmosphere.Density = 0.28
-    atmosphere.Offset = 0.25
-    atmosphere.Color = Color3.fromRGB(185, 210, 255)
-    atmosphere.Decay = Color3.fromRGB(95, 115, 165)
-    atmosphere.Glare = 0.30
-    atmosphere.Haze = 1.50
+    atmosphere.Density = 0.35 -- Rango 0.3 a 0.4 para crear neblina de distancia épica
+    atmosphere.Offset = 0.20
+    atmosphere.Color = Color3.fromRGB(245, 185, 135) -- Tono cálido dorado/atardecer anime
+    atmosphere.Decay = Color3.fromRGB(160, 95, 75)
+    atmosphere.Glare = 0.35
+    atmosphere.Haze = 2.0 -- Suaviza el horizonte para dar inmensidad
     atmosphere.Parent = Lighting
 
-    -- 4. SunRays (Rayos solares estilizados)
+    -- 4. SunRays (Rayos divinos / rayos de sol a través de islas y árboles)
     local sunRays = Lighting:FindFirstChild("GameSunRays") or Instance.new("SunRaysEffect")
     sunRays.Name = "GameSunRays"
-    sunRays.Intensity = 0.10
-    sunRays.Spread = 0.80
+    sunRays.Intensity = 0.20
+    sunRays.Spread = 0.60
     sunRays.Parent = Lighting
 
     -- 5. Depth of Field (Cinematográfico en islas distantes)
     local dof = Lighting:FindFirstChild("GameDepthOfField") or Instance.new("DepthOfFieldEffect")
     dof.Name = "GameDepthOfField"
-    dof.FarIntensity = 0.15
-    dof.FocusDistance = 60
-    dof.InFocusRadius = 50
+    dof.FarIntensity = 0.18
+    dof.FocusDistance = 55
+    dof.InFocusRadius = 45
     dof.NearIntensity = 0
     dof.Parent = Lighting
 
@@ -86,12 +87,13 @@ local function SetupLighting()
     sky.StarCount = 3000
     sky.Parent = Lighting
 
-    -- 7. Nubes Volumétricas en el Vacío Inferior
+    -- 7. Nubes Volumétricas en el Vacío Inferior (Mar de nubes dramáticas en el vacío)
     local terrain = Workspace:FindFirstChildOfClass("Terrain")
     if terrain then
         local clouds = terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
-        clouds.Cover = 0.65
-        clouds.Density = 0.70
+        clouds.Cover = 0.70
+        clouds.Density = 0.80
+        clouds.Color = Color3.fromRGB(215, 225, 255)
         clouds.Parent = terrain
     end
 end

@@ -138,27 +138,27 @@ local function SpawnImpactStarburst(position: Vector3, colorA: Color3, colorB: C
     end)
 end
 
--- NÚMEROS DE DAÑO FLOTANTES ESTILIZADOS
+-- NÚMEROS DE DAÑO FLOTANTES ESTILIZADOS (Curva parabólica y tipografía GothamBlack)
 local function SpawnFloatingDamageNumber(position: Vector3, damage: number, isCritical: boolean, accentColor: Color3)
     local tagPart = Instance.new("Part")
     tagPart.Size = Vector3.new(1, 1, 1)
-    tagPart.Position = position + Vector3.new(math.random(-1, 1) * 0.8, 1.5, math.random(-1, 1) * 0.8)
+    tagPart.Position = position + Vector3.new((math.random() - 0.5) * 1.2, 1.6, (math.random() - 0.5) * 1.2)
     tagPart.Transparency = 1
     tagPart.Anchored = true
     tagPart.CanCollide = false
     tagPart.Parent = Workspace
 
     local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.fromScale(4.5, 2.2)
+    billboard.Size = UDim2.fromScale(5.0, 2.4)
     billboard.AlwaysOnTop = true
     billboard.Adornee = tagPart
-    billboard.MaxDistance = 100
+    billboard.MaxDistance = 110
     billboard.Parent = tagPart
 
     local label = Instance.new("TextLabel")
     label.Size = UDim2.fromScale(1, 1)
     label.BackgroundTransparency = 1
-    label.Font = Enum.Font.FredokaOne
+    label.Font = Enum.Font.GothamBlack
     label.Text = isCritical and string.format("💥 -%d CRIT!", damage) or string.format("-%d", damage)
     label.TextColor3 = isCritical and GameConfig.PALETTE.CRIMSON_SPARK or GameConfig.PALETTE.ENERGY_GOLD
     label.TextScaled = true
@@ -169,15 +169,16 @@ local function SpawnFloatingDamageNumber(position: Vector3, damage: number, isCr
     stroke.Color = Color3.new(0, 0, 0)
     stroke.Parent = label
 
-    TweenService:Create(tagPart, TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Position = tagPart.Position + Vector3.new(0, 4.5, 0),
+    local jumpOffset = Vector3.new((math.random() - 0.5) * 4.0, 3.8, (math.random() - 0.5) * 4.0)
+    TweenService:Create(tagPart, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = tagPart.Position + jumpOffset,
     }):Play()
 
-    TweenService:Create(label, TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+    TweenService:Create(label, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
         TextTransparency = 1,
     }):Play()
 
-    task.delay(0.7, function()
+    task.delay(0.65, function()
         if tagPart and tagPart.Parent then tagPart:Destroy() end
     end)
 end
@@ -496,8 +497,13 @@ function CombatService.ProcessPlayerAttack(player: Player)
                             SpawnImpactStarburst(otherRoot.Position, weaponDef.AccentColor, auraDef.RarityColor)
                             SpawnFloatingDamageNumber(otherRoot.Position + Vector3.new(0, 3, 0), hitDamage, isCrit, weaponDef.AccentColor)
 
-                            local knockback = (otherRoot.Position - root.Position).Unit
-                            otherRoot.AssemblyLinearVelocity = (knockback * 65) + Vector3.new(0, 25, 0)
+                            -- Empuje físico direccional hacia el vacío escalado por nivel de Aura
+                            local auraLevel = profile.AuraLevel or 1
+                            local levelForceBonus = math.clamp(auraLevel * 0.45, 0, 45)
+                            local fuerzaH = 65 + levelForceBonus
+                            local fuerzaV = 26 + (levelForceBonus * 0.3)
+                            local knockDir = (otherRoot.Position - root.Position).Unit
+                            otherRoot.AssemblyLinearVelocity = Vector3.new(knockDir.X * fuerzaH, fuerzaV, knockDir.Z * fuerzaH)
 
                             local ReactorService = require(script.Parent.ReactorService)
                             ReactorService.AddAuraXP(player, 20)

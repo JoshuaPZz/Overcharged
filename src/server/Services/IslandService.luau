@@ -68,6 +68,39 @@ function IslandService.AssignIsland(player: Player): number
             end
         end
 
+        -- Animación de compresión y onda expansiva en los pads de compra
+        local function AnimatePadPress(padInner: BasePart, color: Color3)
+            local origPos = padInner.Position
+            TweenService:Create(padInner, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = origPos - Vector3.new(0, 0.22, 0)
+            }):Play()
+            task.delay(0.22, function()
+                if padInner and padInner.Parent then
+                    TweenService:Create(padInner, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                        Position = origPos
+                    }):Play()
+                end
+            end)
+
+            local ring = Instance.new("Part")
+            ring.Name = "PadEnergyRing"
+            ring.Shape = Enum.PartType.Cylinder
+            ring.Size = Vector3.new(0.08, 1.8, 1.8)
+            ring.CFrame = CFrame.new(origPos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.pi/2)
+            ring.Material = Enum.Material.Neon
+            ring.Color = color
+            ring.Transparency = 0.25
+            ring.Anchored = true
+            ring.CanCollide = false
+            ring.Parent = Workspace
+
+            TweenService:Create(ring, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = Vector3.new(0.04, 12, 12),
+                Transparency = 1,
+            }):Play()
+            task.delay(0.5, function() if ring and ring.Parent then ring:Destroy() end end)
+        end
+
         -- Enlazar Pads físicos de compra de la isla (Tycoon Pads)
         local housePad = islandFolder:FindFirstChild("HouseUpgradePad")
         if housePad then
@@ -80,6 +113,7 @@ function IslandService.AssignIsland(player: Player): number
                         local now = os.clock()
                         if now - debounce > 1.2 then
                             debounce = now
+                            AnimatePadPress(padInner, padInner.Color)
                             local HouseService = require(script.Parent.HouseService)
                             HouseService.UpgradeHouse(player)
                         end
@@ -99,6 +133,7 @@ function IslandService.AssignIsland(player: Player): number
                         local now = os.clock()
                         if now - debounce > 1.2 then
                             debounce = now
+                            AnimatePadPress(padInner, padInner.Color)
                             local HouseService = require(script.Parent.HouseService)
                             HouseService.BuyTeslaTower(player)
                         end

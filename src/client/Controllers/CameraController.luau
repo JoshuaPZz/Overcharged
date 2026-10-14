@@ -32,8 +32,34 @@ function CameraController.Initialize()
     hitstopEffect.Contrast = 0
     hitstopEffect.Parent = Lighting
 
-    -- Bucle de renderizado procedural de sacudida
+-- Estado de Camera Tilt lateral
+local CurrentCameraTilt = 0
+local TargetCameraTilt = 0
+
+    -- Bucle de renderizado procedural de sacudida e inclinación dinámica
     RunService.RenderStepped:Connect(function(dt: number)
+        -- 1. Inclinación sutil de cámara (Camera Tilt) según el movimiento lateral
+        local player = game.Players.LocalPlayer
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then
+            local moveDir = hum.MoveDirection
+            if moveDir.Magnitude > 0.1 then
+                local right = Camera.CFrame.RightVector
+                local lateral = moveDir:Dot(right)
+                TargetCameraTilt = -lateral * 2.2
+            else
+                TargetCameraTilt = 0
+            end
+        else
+            TargetCameraTilt = 0
+        end
+        CurrentCameraTilt += (TargetCameraTilt - CurrentCameraTilt) * math.clamp(dt * 12, 0, 1)
+        if math.abs(CurrentCameraTilt) > 0.01 then
+            Camera.CFrame = Camera.CFrame * CFrame.Angles(0, 0, math.rad(CurrentCameraTilt))
+        end
+
+        -- 2. Sacudida procedural con math.noise
         if ShakeElapsed < ShakeDuration and ShakeIntensity > 0 then
             ShakeElapsed += dt
             local progress = 1 - (ShakeElapsed / ShakeDuration)

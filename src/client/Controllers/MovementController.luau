@@ -45,7 +45,67 @@ local function SpawnDashTrail(root: BasePart)
     end)
 end
 
--- Ejecuta el Dash de evasión con estela de energía
+-- Referencias de interfaz de Dash Cooldown
+local DashGui: ScreenGui?
+local DashFill: Frame?
+local DashLabel: TextLabel?
+local DashGlow: UIStroke?
+
+local function CreateDashCooldownUI()
+    if DashGui then return end
+    local playerGui = localPlayer:WaitForChild("PlayerGui")
+    DashGui = Instance.new("ScreenGui")
+    DashGui.Name = "DashCooldownHUD"
+    DashGui.ResetOnSpawn = false
+    DashGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    DashGui.Parent = playerGui
+
+    local container = Instance.new("Frame")
+    container.Name = "DashContainer"
+    container.Size = UDim2.fromOffset(130, 28)
+    container.Position = UDim2.new(0.5, -65, 1, -70)
+    container.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+    container.BackgroundTransparency = 0.2
+    container.Parent = DashGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = container
+
+    DashGlow = Instance.new("UIStroke")
+    DashGlow.Thickness = 1.5
+    DashGlow.Color = Color3.fromRGB(0, 210, 255)
+    DashGlow.Parent = container
+
+    DashFill = Instance.new("Frame")
+    DashFill.Name = "Fill"
+    DashFill.Size = UDim2.fromScale(1, 1)
+    DashFill.BackgroundColor3 = Color3.fromRGB(0, 180, 240)
+    DashFill.BackgroundTransparency = 0.4
+    DashFill.BorderSizePixel = 0
+    DashFill.Parent = container
+
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 8)
+    fillCorner.Parent = DashFill
+
+    DashLabel = Instance.new("TextLabel")
+    DashLabel.Size = UDim2.fromScale(1, 1)
+    DashLabel.BackgroundTransparency = 1
+    DashLabel.Font = Enum.Font.FredokaOne
+    DashLabel.Text = "⚡ DASH [Q]"
+    DashLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DashLabel.TextSize = 13
+    DashLabel.ZIndex = 5
+    DashLabel.Parent = container
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1.5
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Parent = DashLabel
+end
+
+-- Ejecuta el Dash de evasión con estela de energía y cooldown visual
 function MovementController.PerformDash()
     local char = localPlayer.Character
     if not char then return end
@@ -56,6 +116,30 @@ function MovementController.PerformDash()
     local now = os.clock()
     if (now - LastDashTime) < DashCooldown then return end
     LastDashTime = now
+
+    -- Animar barra de recarga en pantalla
+    if DashFill and DashGlow then
+        DashFill.Size = UDim2.fromScale(0, 1)
+        DashGlow.Color = Color3.fromRGB(80, 90, 110)
+        TweenService:Create(DashFill, TweenInfo.new(DashCooldown, Enum.EasingStyle.Linear), {
+            Size = UDim2.fromScale(1, 1)
+        }):Play()
+        task.delay(DashCooldown, function()
+            if DashGlow then
+                DashGlow.Color = Color3.fromRGB(0, 230, 255)
+                TweenService:Create(DashGlow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Thickness = 3
+                }):Play()
+                task.delay(0.25, function()
+                    if DashGlow then
+                        TweenService:Create(DashGlow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                            Thickness = 1.5
+                        }):Play()
+                    end
+                end)
+            end
+        end)
+    end
 
     -- Dirección del dash según hacia dónde se mueve el jugador o mira
     local moveDir = hum.MoveDirection
@@ -145,6 +229,8 @@ end
 
 -- Inicializa las entradas de movimiento (PC, Móvil, Consola)
 function MovementController.Initialize()
+    CreateDashCooldownUI()
+
     -- Salto y Doble Salto
     UserInputService.JumpRequest:Connect(function()
         local char = localPlayer.Character

@@ -317,4 +317,30 @@ task.spawn(function()
     end
 end)
 
+-- 4. Bucle optimizado en cliente para Generadores y Cristales de Aura Vivos (levitación y rotación suave)
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+RunService.RenderStepped:Connect(function()
+    local t = os.clock()
+    local floatOffset = math.sin(t * 2.5) * 0.45
+    local map = Workspace:FindFirstChild("Map")
+    if not map then return end
+
+    local islandsFolder = map:FindFirstChild("Islands")
+    if islandsFolder then
+        for _, island in ipairs(islandsFolder:GetChildren()) do
+            local core = island:FindFirstChild("WorldReactorCore") :: BasePart?
+            if core then
+                local baseY = core:GetAttribute("BaseY")
+                if not baseY then
+                    baseY = core.Position.Y
+                    core:SetAttribute("BaseY", baseY)
+                end
+                core.CFrame = CFrame.new(core.Position.X, (baseY :: number) + floatOffset, core.Position.Z) * CFrame.Angles(0, t * 1.5, 0)
+            end
+        end
+    end
+end)
+
 print("[Overcharged] Cliente iniciado con éxito y UI montada.")

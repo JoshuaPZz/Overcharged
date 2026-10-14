@@ -73,12 +73,12 @@ function AuraVFXModule.AttachAuraVFX(character: Model, auraDef: any, level: numb
     container.Name = "AuraVFXContainer"
     container.Parent = character
 
-    -- 1. LUZ SUAVE EN EL SUELO (Iluminación ambiental, no cegadora)
+    -- 1. LUZ SUAVE EN EL SUELO (PointLight brillante según tier)
     local pLight = Instance.new("PointLight")
     pLight.Name = "AuraPointLight"
     pLight.Color = colorA
-    pLight.Brightness = 1.0 + intensity * 0.8
-    pLight.Range = 12 + intensity * 8
+    pLight.Brightness = 2.0 + intensity * 0.8
+    pLight.Range = 14 + intensity * 6
     pLight.Shadows = false
     pLight.Parent = hrp
 
@@ -87,9 +87,9 @@ function AuraVFXModule.AttachAuraVFX(character: Model, auraDef: any, level: numb
     highlight.Name = "AuraHighlight"
     highlight.Adornee = character
     highlight.FillColor = colorA
-    highlight.FillTransparency = 0.88
+    highlight.FillTransparency = 0.75
     highlight.OutlineColor = colorB
-    highlight.OutlineTransparency = 0.2
+    highlight.OutlineTransparency = 0.15
     highlight.DepthMode = Enum.HighlightDepthMode.Occluded
     highlight.Parent = character
 
@@ -140,7 +140,7 @@ function AuraVFXModule.AttachAuraVFX(character: Model, auraDef: any, level: numb
     })
     pillarCore.Parent = hrp
 
-    -- 4. CHISPAS ASCENDENTES NÍTIDAS (Sol's RNG Sparkles)
+    -- 4. CHISPAS ASCENDENTES NÍTIDAS (Sol's RNG Sparkles con Squash dinámico)
     local hrpAttachment = Instance.new("Attachment")
     hrpAttachment.Name = "AuraRootAttachment"
     hrpAttachment.Position = Vector3.new(0, -1.8, 0)
@@ -154,23 +154,63 @@ function AuraVFXModule.AttachAuraVFX(character: Model, auraDef: any, level: numb
         ColorSequenceKeypoint.new(0.5, colorB),
         ColorSequenceKeypoint.new(1, colorA),
     })
-    sparkEmitter.LightEmission = 0.6
-    sparkEmitter.Rate = math.clamp(14 + math.floor(level * 0.3), 12, 40)
+    sparkEmitter.LightEmission = 1
+    sparkEmitter.Rate = math.clamp(16 + math.floor(level * 0.35), 16, 45)
     sparkEmitter.Speed = NumberRange.new(3 + intensity * 3, 7 + intensity * 5)
     sparkEmitter.SpreadAngle = Vector2.new(24, 24)
     sparkEmitter.Lifetime = NumberRange.new(0.6, 1.2)
+    sparkEmitter.Squash = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, -0.6),
+        NumberSequenceKeypoint.new(0.4, 0.2),
+        NumberSequenceKeypoint.new(1, 0),
+    })
     sparkEmitter.Size = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 0.25),
-        NumberSequenceKeypoint.new(0.5, 0.55),
+        NumberSequenceKeypoint.new(0.5, 0.65),
         NumberSequenceKeypoint.new(1, 0),
     })
     sparkEmitter.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.25),
-        NumberSequenceKeypoint.new(0.7, 0.1),
+        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(0.7, 0.05),
         NumberSequenceKeypoint.new(1, 1),
     })
     sparkEmitter.EmissionDirection = Enum.NormalId.Top
     sparkEmitter.Parent = hrpAttachment
+
+    -- Capa 3: Estelas de movimiento en extremidades (Hands & Feet Trails)
+    local limbParts = {
+        character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"),
+        character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm"),
+        character:FindFirstChild("RightFoot") or character:FindFirstChild("Right Leg"),
+        character:FindFirstChild("LeftFoot") or character:FindFirstChild("Left Leg"),
+    }
+    for _, limb in ipairs(limbParts) do
+        if limb and limb:IsA("BasePart") then
+            local a0 = Instance.new("Attachment")
+            a0.Name = "AuraLimb_Att0"
+            a0.Position = Vector3.new(0, 0.4, 0)
+            a0.Parent = limb
+
+            local a1 = Instance.new("Attachment")
+            a1.Name = "AuraLimb_Att1"
+            a1.Position = Vector3.new(0, -0.4, 0)
+            a1.Parent = limb
+
+            local limbTrail = Instance.new("Trail")
+            limbTrail.Name = "AuraLimb_Trail"
+            limbTrail.Attachment0 = a0
+            limbTrail.Attachment1 = a1
+            limbTrail.Color = ColorSequence.new(colorA, colorB)
+            limbTrail.Lifetime = 0.24
+            limbTrail.LightEmission = 1
+            limbTrail.FaceCamera = true
+            limbTrail.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.25),
+                NumberSequenceKeypoint.new(1, 1),
+            })
+            limbTrail.Parent = limb
+        end
+    end
 
     -- 5. ESCALADO POR RAREZA Y NIVEL (Halo en la cabeza para tiers superiores)
     local mult = auraDef.Multiplier or 1
