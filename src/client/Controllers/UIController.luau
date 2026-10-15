@@ -56,6 +56,31 @@ local UpgradesContainer: ScrollingFrame
 
 local NotificationBanner: TextLabel
 local CachedProfile: Types.PlayerProfile? = nil
+local RenderUpgrades: (profile: Types.PlayerProfile) -> ()
+
+local function GetFallbackProfile(): Types.PlayerProfile
+    local upgrades: { [string]: Types.PlayerUpgradeData } = {}
+    for k, _ in pairs(GameConfig.UPGRADES) do
+        upgrades[k] = { Level = 0 }
+    end
+    if upgrades["Turbine"] then upgrades["Turbine"].Level = 1 end
+    return {
+        Energy = 0,
+        CurrentAura = "Kinetic Spark",
+        AuraLevel = 1,
+        AuraXP = 0,
+        AuraXPNext = 100,
+        OverchargeMeter = 0,
+        MaxOvercharge = 100,
+        HouseLevel = 0,
+        TeslaTowers = 0,
+        Upgrades = upgrades,
+        TotalClicks = 0,
+        AurasUnlocked = { "Kinetic Spark" },
+        EquippedWeapon = "Wooden Blade",
+        AssignedIsland = 1,
+    }
+end
 
 -- Estado de la animación de sobrecarga
 local FXOverlay: Frame
@@ -148,23 +173,8 @@ local function ApplyButtonMicroInteractions(btn: GuiButton)
     end)
 end
 
--- Consulta el estado formal de un modal
-local function GetModalState(modal: Frame): UIState
-    return ModalStates[modal] or (modal.Visible and "Expanded" or "Minimized")
-end
-
--- Alterna la visibilidad de un modal con animación fluida de escala y máquina de estados
+-- Alterna la visibilidad de un modal con animación fluida de escala
 local function AnimateModalToggle(modal: Frame, open: boolean)
-    local currentState = GetModalState(modal)
-    if currentState == "Transitioning" then
-        return -- Debounce: previene carreras y spam rápido de clics
-    end
-    if (open and currentState == "Expanded") or (not open and currentState == "Minimized") then
-        return
-    end
-
-    ModalStates[modal] = "Transitioning"
-
     local scale = modal:FindFirstChildOfClass("UIScale")
     if not scale then
         scale = Instance.new("UIScale")
@@ -174,24 +184,21 @@ local function AnimateModalToggle(modal: Frame, open: boolean)
 
     if open then
         modal.Visible = true
+        ModalStates[modal] = "Expanded"
         scale.Scale = 0.88
-        local tween = TweenService:Create(scale, TweenInfo.new(UI_CONFIG.MODAL_TWEEN_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        TweenService:Create(scale, TweenInfo.new(UI_CONFIG.MODAL_TWEEN_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
             Scale = 1.0,
-        })
-        tween:Play()
-        task.delay(UI_CONFIG.MODAL_TWEEN_DURATION, function()
-            ModalStates[modal] = "Expanded"
-        end)
+        }):Play()
     else
+        ModalStates[modal] = "Minimized"
         local tween = TweenService:Create(scale, TweenInfo.new(UI_CONFIG.MODAL_TWEEN_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
             Scale = 0.88,
         })
         tween:Play()
         task.delay(UI_CONFIG.MODAL_TWEEN_DURATION, function()
-            if scale.Scale <= 0.9 then
+            if ModalStates[modal] == "Minimized" then
                 modal.Visible = false
             end
-            ModalStates[modal] = "Minimized"
         end)
     end
 end
@@ -356,7 +363,7 @@ local function CreateCloseButton(parent: Frame, onClose: (() -> ())?): TextButto
     closeBtn.Size = UDim2.fromOffset(32, 32)
     closeBtn.Position = UDim2.new(1, -38, 0, 8)
     closeBtn.BackgroundColor3 = GameConfig.PALETTE.CRIMSON_SPARK
-    closeBtn.Text = "✕"
+    closeBtn.Text = "X"
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.Font = Enum.Font.FredokaOne
     closeBtn.TextSize = 16
@@ -1030,7 +1037,7 @@ function UIController.InitializeUI()
 
     -- 7. Conexiones de apertura y cierre de botones con animación fluida
     farmToggleBtn.MouseButton1Click:Connect(function()
-        if GetModalState(ReactorModal) == "Expanded" then
+        if ReactorModal.Visible then
             AnimateModalToggle(ReactorModal, false)
         else
             AnimateModalToggle(ReactorModal, true)
@@ -1039,7 +1046,7 @@ function UIController.InitializeUI()
     end)
 
     shopToggleBtn.MouseButton1Click:Connect(function()
-        if GetModalState(ShopModal) == "Expanded" then
+        if ShopModal.Visible then
             AnimateModalToggle(ShopModal, false)
         else
             AnimateModalToggle(ShopModal, true)
@@ -1143,6 +1150,9 @@ function UIController.InitializeUI()
             end
         end
     end)
+
+    -- Cargar mejoras de respaldo inmediatamente para que el modal nunca esté vacío
+    RenderUpgrades(GetFallbackProfile())
 end
 
 -- Muestra un anuncio animado en pantalla
@@ -1257,7 +1267,7 @@ function UIController.PlayOverchargeBurst()
 end
 
 -- Renderiza la lista de mejoras en la tienda
-local function RenderUpgrades(profile: Types.PlayerProfile)
+RenderUpgrades = function(profile: Types.PlayerProfile)
     local palette = GameConfig.PALETTE
 
     for _, child in ipairs(UpgradesContainer:GetChildren()) do
@@ -1268,10 +1278,10 @@ local function RenderUpgrades(profile: Types.PlayerProfile)
 
     local order = 1
     for key, def in pairs(GameConfig.UPGRADES) do
-        local userUpgrade = profile.Upgrades[key]
+        local userUpgrade = profile.Upgrades and profile.Upgrades[key]
         local currentLevel = userUpgrade and userUpgrade.Level or 0
         local cost = math.floor(def.BaseCost * (def.CostMultiplier ^ currentLevel))
-        local canAfford = profile.Energy >= cost
+        local canAfford = (profile.Energy or 0) >= cost
 
         local card = Instance.new("Frame")
         card.Name = "UpgradeCard_" .. key
@@ -1367,7 +1377,7 @@ local function RenderUpgrades(profile: Types.PlayerProfile)
     houseDesc.Parent = houseCard
 
     if houseConfig then
-        local canAffordHouse = profile.Energy >= houseConfig.Cost
+        local canAffordHouse = (profile.Energy or 0) >= houseConfig.Cost
         local houseBuyBtn = Instance.new("TextButton")
         houseBuyBtn.Name = "BuyHouseBtn"
         houseBuyBtn.Size = UDim2.new(0.3, 0, 0.75, 0)
@@ -1384,7 +1394,7 @@ local function RenderUpgrades(profile: Types.PlayerProfile)
         end
 
         houseBuyBtn.MouseButton1Click:Connect(function()
-            if profile.Energy >= houseConfig.Cost then
+            if (profile.Energy or 0) >= houseConfig.Cost then
                 ReactorController.UpgradeHouse()
             end
         end)
@@ -1395,7 +1405,7 @@ local function RenderUpgrades(profile: Types.PlayerProfile)
     local teslaTowers = profile.TeslaTowers or 0
     local maxTowers = GameConfig.TESLA_TOWER.MaxCount
     local teslaCost = math.floor(GameConfig.TESLA_TOWER.BaseCost * (GameConfig.TESLA_TOWER.CostMultiplier ^ teslaTowers))
-    local canAffordTesla = profile.Energy >= teslaCost
+    local canAffordTesla = (profile.Energy or 0) >= teslaCost
 
     local teslaCard = Instance.new("Frame")
     teslaCard.Name = "UpgradeCard_Tesla"

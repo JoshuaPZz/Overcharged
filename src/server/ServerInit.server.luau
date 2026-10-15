@@ -29,6 +29,7 @@ local RequestAttack = EnsureRemote(remotesFolder, "RequestAttack")
 local RequestPlaceBridgeBlock = EnsureRemote(remotesFolder, "RequestPlaceBridgeBlock")
 local StateReplicated = EnsureRemote(remotesFolder, "StateReplicated")
 local NotificationEvent = EnsureRemote(remotesFolder, "NotificationEvent")
+local RequestInitialState = EnsureRemote(remotesFolder, "RequestInitialState")
 
 -- 2. Cargar Servicios del Servidor
 local DataService = require(script.Parent.Services.DataService)
@@ -73,6 +74,13 @@ RequestBuyAutomator.OnServerEvent:Connect(function(player)
     HouseService.BuyTeslaTower(player)
 end)
 
+RequestInitialState.OnServerEvent:Connect(function(player)
+    local profile = DataService.GetProfile(player)
+    if profile then
+        StateReplicated:FireClient(player, profile)
+    end
+end)
+
 -- 5. Manejo del Ciclo de Vida de los Jugadores
 Players.PlayerAdded:Connect(function(player)
     local profile = DataService.LoadProfile(player)
@@ -95,6 +103,7 @@ Players.PlayerAdded:Connect(function(player)
             CombatService.ApplyAuraStats(player)
             CombatService.GiveAuraBlade(player)
             HouseService.BuildForPlayer(player)
+            StateReplicated:FireClient(player, currentProfile)
         end
     end)
 

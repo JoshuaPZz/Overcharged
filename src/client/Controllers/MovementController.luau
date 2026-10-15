@@ -72,7 +72,7 @@ local function CreateDashCooldownUI()
     local container = Instance.new("Frame")
     container.Name = "DashContainer"
     container.Size = UDim2.fromOffset(130, 28)
-    container.Position = UDim2.new(0.5, -65, 1, -70)
+    container.Position = UDim2.new(0.5, -65, 1, -125)
     container.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
     container.BackgroundTransparency = 0.2
     container.Parent = DashGui

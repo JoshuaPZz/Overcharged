@@ -31,6 +31,9 @@
         },
         "RequestPlaceBridgeBlock": {
           "$className": "RemoteEvent"
+        },
+        "RequestInitialState": {
+          "$className": "RemoteEvent"
         }
       }
     },

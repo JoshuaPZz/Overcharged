@@ -197,16 +197,21 @@ if player.Character then
 end
 player.CharacterAdded:Connect(OnCharacterAdded)
 
-player.Backpack.ChildAdded:Connect(function(child)
-    if child:IsA("Tool") then
-        HookTool(child)
+task.spawn(function()
+    local backpack = player:WaitForChild("Backpack", 10)
+    if backpack then
+        backpack.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") then
+                HookTool(child)
+            end
+        end)
+        for _, child in ipairs(backpack:GetChildren()) do
+            if child:IsA("Tool") then
+                HookTool(child)
+            end
+        end
     end
 end)
-for _, child in ipairs(player.Backpack:GetChildren()) do
-    if child:IsA("Tool") then
-        HookTool(child)
-    end
-end
 
 -- 3. Atajos de teclado y clic de ataque
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -228,7 +233,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
         -- Si el arma está en la mochila, equiparla automáticamente y atacar
         if not tool and humanoid then
-            local bpTool = player.Backpack:FindFirstChildOfClass("Tool")
+            local backpack = player:FindFirstChild("Backpack")
+            local bpTool = backpack and backpack:FindFirstChildOfClass("Tool")
             if bpTool then
                 humanoid:EquipTool(bpTool)
                 HookTool(bpTool)
@@ -245,7 +251,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             end
         end
 
-        -- Ataque sin herramienta en mano (combo cuerpo a cuerpo)
+        -- Ataque con o sin herramienta en mano (combo cuerpo a cuerpo)
         local remotes = ReplicatedStorage:FindFirstChild("Remotes")
         local reqAttack = remotes and remotes:FindFirstChild("RequestAttack") :: RemoteEvent?
         if reqAttack and PlaySwing() then
@@ -300,6 +306,11 @@ task.spawn(function()
         StateReplicated.OnClientEvent:Connect(function(profile)
             UIController.UpdateFromProfile(profile)
         end)
+
+        local RequestInitialState = Remotes:FindFirstChild("RequestInitialState") :: RemoteEvent?
+        if RequestInitialState then
+            RequestInitialState:FireServer()
+        end
     end
 
     if NotificationEvent then
